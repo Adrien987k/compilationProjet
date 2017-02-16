@@ -6,7 +6,7 @@ let keyword_table = Hashtbl.create 53
 let _ = 
     List.iter (fun (kwr, tok) -> Hashtbl.add keyword_table kwd tok)
               [ "ALL", ALL;
-                "AND", ALL;
+                "AND", AND;
                 "AS", AS;
                 "BETWEEN", BETWEEN;
                 "BY", BY;
@@ -36,12 +36,6 @@ let _ =
                 "UPPER", UPPER;
                 "WHERE", WHERE;
              ]
-let string_of_list l = 
-  let sol l s  = match l with
-      | [] -> s
-      | h :: q -> sol q s ^ h
-  in 
-  sol l "" ;;
 
 }
 
@@ -49,7 +43,7 @@ let string_of_list l =
 (* Déclaration du dictionnaire (regexp -> terminal/token) *)
 
 rule anlex = parse
-  | [' ' '\t' '\n' '\r']                  { SPACE }
+  | [' ' '\t' '\n' '\r']                  { anlex lexbuf }
   | "--"                                  { comlex lexbuf }
   | '*'                                   { ASTERISK }
   | "\""                                  { QQUOTE }
@@ -68,10 +62,12 @@ rule anlex = parse
   | "<="                                  { LE }
   | ">="                                  { GE }
   | ['0'-'9']+ as lxm                     { INT(int_of_string lxm) }
-  | ['0'-'9']+ '.' ['0'-'9']+ |
-    '.'  ['0'-'9']+ 
-  | '''                                   { STRING(string_of_list (stringlex [] lexbuf)) }
-  | ['a'-'z' 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9'] as lxm
+  | (['0'-'9']+ '.' (['0'-'9']+)? (('e' | 'E') ('-' | '+')? ['0'-'9']+ ) |
+    '.'  ['0'-'9']+ ['0'-'9']+ ('e' | 'E' ('-' | '+')? ['0'-'9']+ )?) as lxm
+                                          { FLOAT(float_of_string lxm) }
+  | ''' ([^'''] | "''") ''' as lxm        { STRING(lxm) }
+  | (['a'-'z' 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9'] |
+    '"'[^'"']*'"' ) as lxm
                                           { try 
                                               Hashtbl.find keyword_table lxm
                                             with Not_found -> ID(lxm) 
@@ -83,12 +79,5 @@ rule anlex = parse
                                           }
 
 and comlex = parse
-  | "\n"                     { anlex lexbuf }
+  | '\n'                     { anlex lexbuf }
   | _                        { comlex lexbuf }
-
-and stringlex l = parse
-  | "''" as lxm                   { stringlex (lxm :: l) lexbuf }
-  | '''                             { l }
-  | _ as lxm                        { stringlex (lxm :: l) lexbuf }
-
-'"'[^'"']*'"'
