@@ -5,7 +5,7 @@ type expression =
 	| EXPRFloat of float
 	| EXPRPlus of expression * expression
 	| EXPRMinus of expression * expression
-	| EXPRTimes of expression * expression
+	| EXPRAstrisk of expression * expression
 	| EXPRSlash of expression * expression
 	| EXPRUMinus of expression
 	| EXPRString of string
@@ -60,15 +60,10 @@ and predicate =
 	| PREDLe of expression * expression
 	| PREDGt of expression * expression
 	| PREDGe of expression * expression
-	| PREDBetween of expression * expression
-	| PREDNotBetween of expression * expression
+	| PREDBetween of expression * expression * expression
+	| PREDNotBetween of expression * expression * expression
 	| PREDNull of expression
 	| PREDNotNull of expression
-
-and value = 
-	| VInt of int 
-	| VFloat of float 
-	| VString of string
 
 and simple_query =
 	| SQUERYSelectFromWhere of projection * source * condition
@@ -81,9 +76,10 @@ and simple_query =
 let cst_exprAttribute s1 s2 = EXPRAttribute(s1,s2)
 let cst_exprPar e = EXPRPar(e)
 let cst_exprInt i = EXPRInt(i)
+let cst_exprFloat f = EXPRFloat(f)
 let cst_exprPlus e1 e2 = EXPRPlus(e1,e2)
 let cst_exprMinus e1 e2 = EXPRMinus(e1,e2)
-let cst_exprTimes e1 e2 = EXPRTimes(e1,e2) 
+let cst_exprAsterisk e1 e2 = EXPRAstrisk(e1,e2) 
 let cst_exprSlash e1 e2 = EXPRSlash(e1,e2)
 let cst_exprUMinus e = EXPRUMinus(e)
 let cst_exprString s = EXPRString(s) 
@@ -97,6 +93,12 @@ let cst_columnExprId e s = COLExprId(e,s)
 
 let cst_projAsterisk = PROJAsterisk
 let cst_projColumns l = PROJColumns(l)
+
+let cst_sourId s = SOURID(s)
+let cst_sourSQuery sq = SOURSQuery(sq)
+let cst_sourComma s1 s2 = SOURComma(s1,s2)
+let cst_sourCrossJoin s1 s2 = SOURCrossJoin(s1,s2)
+let cst_sourJoinOn s1 op s2 c = SOURJoinOn(s1,op,s2,c)
 
 let cst_innerjoin = INNERJOIN
 let cst_join = JOIN
@@ -125,14 +127,10 @@ let cst_predLt e1 e2 = PREDLt(e1,e2)
 let cst_predLe e1 e2 = PREDLe(e1,e2)
 let cst_predGt e1 e2 = PREDGt(e1,e2)
 let cst_predGe e1 e2 = PREDGe(e1,e2)
-let cst_predBetween e1 e2 = PREDBetween(e1,e2)
-let cst_predNotBetween e1 e2 = PREDNotBetween(e1,e2)
+let cst_predBetween e1 e2 e3 = PREDBetween(e1,e2,e3)
+let cst_predNotBetween e1 e2 e3 = PREDNotBetween(e1,e2,e3)
 let cst_predNull e = PREDNull(e)
 let cst_predNotNull e = PREDNotNull(e)
-
-let cst_vInt i = VInt(i)
-let cst_vFloat f = VFloat(f)
-let cst_vString s = VString(s)
 
 let cst_squerySelectFromWhere p s c = SQUERYSelectFromWhere(p,s,c)
 let cst_squerySelectAllFromWhere p s c = SQUERYSelectAllFromWhere(p,s,c)
