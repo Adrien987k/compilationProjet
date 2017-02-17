@@ -1,13 +1,3 @@
-type expression
-type column
-type projection
-type source
-type joinOp
-type condition
-type predicate
-type value
-type simple_query
-
 type expression = 
 	| EXPRAttribute of string * string (* id.id *)
 	| EXPRPar of expression
@@ -24,22 +14,23 @@ type expression =
 	| EXPRUpper of expression
 	| EXPRSubString of expression * expression * expression
 
-type column =
+
+and column =
 	| COLExpr of expression
 	| COLExprId of expression * string
 
-type projection = 
+and projection = 
 	| PROJAsterisk
 	| PROJColumns of column list
 
-type source = 
+and source = 
 	| SOURID of string
 	| SOURSQuery of simple_query
 	| SOURComma of source * source
 	| SOURCrossJoin of source * source
 	| SOURJoinOn of source * joinOp * source * condition
 
-type joinOp =
+and joinOp =
 	| INNERJOIN
 	| JOIN
 	| OUTERLEFT
@@ -49,7 +40,7 @@ type joinOp =
 	| RIGHT
 	| FULL
 
-type condition = 
+and condition = 
 	| CONDPred of predicate
 	| CONDNotCond of condition
 	| CONDAnd of condition * condition
@@ -61,7 +52,7 @@ type condition =
 	| CONDIsUnknown of condition
 	| CONDIsNotUnknown of condition
 
-type predicate = 
+and predicate = 
 	| PREDCond of condition
 	| PREDEq of expression * expression
 	| PREDNeq of expression * expression
@@ -74,12 +65,12 @@ type predicate =
 	| PREDNull of expression
 	| PREDNotNull of expression
 
-type value = 
+and value = 
 	| VInt of int 
 	| VFloat of float 
 	| VString of string
 
-type simple_query =
+and simple_query =
 	| SQUERYSelectFromWhere of projection * source * condition
 	| SQUERYSelectAllFromWhere of projection * source * condition
 	| SQUERYSelectDistinctFromWhere of projection * source * condition
@@ -119,6 +110,7 @@ let cst_full = FULL
 let cst_condPred p = CONDPred(p)
 let cst_condNotCond c = CONDNotCond(c)
 let cst_condAnd c1 c2 = CONDAnd(c1,c2)
+let cst_condOr c1 c2 = CONDOr(c1,c2)
 let cst_condIsTrue c = CONDIsTrue(c)
 let cst_condIsNotTrue c = CONDIsNotTrue(c)
 let cst_condIsFalse c = CONDIsFalse(c)

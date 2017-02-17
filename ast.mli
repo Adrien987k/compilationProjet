@@ -17,7 +17,7 @@ val cst_exprTimes: expression -> expression -> expression
 val cst_exprSlash: expression -> expression -> expression
 val cst_exprUMinus: expression -> expression
 val cst_exprString: string -> expression
-val cst_exprPipe: expression -> expression
+val cst_exprPipe: expression -> expression -> expression
 val cst_exprLower: expression -> expression
 val cst_exprUpper: expression -> expression
 val cst_exprSubString: expression -> expression -> expression -> expression
@@ -39,7 +39,8 @@ val cst_full: joinOp
 
 val cst_condPred: predicate -> condition
 val cst_condNotCond: condition -> condition
-val cst_condAnd: condition -> condition
+val cst_condAnd: condition -> condition -> condition
+val cst_condOr: condition -> condition -> condition
 val cst_condIsTrue: condition -> condition
 val cst_condIsNotTrue: condition -> condition
 val cst_condIsFalse: condition -> condition
@@ -47,7 +48,7 @@ val cst_condIsNotFalse: condition -> condition
 val cst_condIsUnknow: condition -> condition
 val cst_condIsNotUnknow: condition -> condition
 
-val cst_predCond: expression -> expression -> predicate
+val cst_predCond: condition-> predicate
 val cst_predEq: expression -> expression -> predicate
 val cst_predNeq: expression -> expression -> predicate
 val cst_predLt: expression -> expression -> predicate
