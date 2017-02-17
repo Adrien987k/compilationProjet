@@ -1,9 +1,29 @@
-type simple_query
-type projection
-type column
+type expression = 
+	| EXPRAttribute of string * string (* id.id *)
+	| EXPRPar of expression
+	| EXPRInt of int
+	| EXPRFloat of float
+	| EXPRPlus of expression * expression
+	| EXPRMinus of expression * expression
+	| EXPRTimes of expression * expression
+	| EXPRSlash of expression * expression
+	| EXPRUMinus of expression
+	| EXPRString of string
+	| EXPRPipe of expression * expression
+	| EXPRLower of expression
+	| EXPRUpper of expression
+	| EXPRSubString of expression * expression * expression
+
+type column =
+	| COLExpr of expression
+	| COLExprId of expression * string
+
+type projection = 
+	| PROJAsterisk
+	| PROJColumns of column list
 
 type source = 
-	| SOURID of string
+	| SOURID of string					(* id *)
 	| SOURSQuery of simple_query
 	| SOURComma of source * source
 	| SOURCrossJoin of source * source
@@ -49,3 +69,7 @@ type value =
 	| VFloat of float 
 	| VString of string
 
+type simple_query =
+	| SQUERYSelectFromWhere of projection * source * condition
+	| SQUERYSelectAllFromWhere of projection * source * condition
+	| SQUERYSelectDistinctFromWhere of projection * source * condition
