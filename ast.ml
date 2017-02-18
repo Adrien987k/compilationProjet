@@ -74,7 +74,6 @@ and simple_query =
 	| SQUERYSelectAllFromWhere of projection * source * condition
 	| SQUERYSelectDistinctFromWhere of projection * source * condition
 
-
 (* constructors *)
 
 let cst_exprAttribute s1 s2 = EXPRAttribute(s1,s2)
@@ -124,8 +123,8 @@ let cst_condIsTrue c = CONDIsTrue(c)
 let cst_condIsNotTrue c = CONDIsNotTrue(c)
 let cst_condIsFalse c = CONDIsFalse(c)
 let cst_condIsNotFalse c = CONDIsNotFalse(c)
-let cst_condIsUnknow c = CONDIsUnknown(c)
-let cst_condIsNotUnknow c = CONDIsNotUnknown(c)
+let cst_condIsUnknown c = CONDIsUnknown(c)
+let cst_condIsNotUnknown c = CONDIsNotUnknown(c)
 
 let cst_predCond c = PREDCond(c)
 let cst_predEq e1 e2 = PREDEq(e1,e2)
@@ -142,7 +141,6 @@ let cst_predNotNull e = PREDNotNull(e)
 let cst_squerySelectFromWhere p s c = SQUERYSelectFromWhere(p,s,c)
 let cst_squerySelectAllFromWhere p s c = SQUERYSelectAllFromWhere(p,s,c)
 let cst_squerySelectDistinctFromWhere p s c = SQUERYSelectDistinctFromWhere(p,s,c)
-
 
 
 let rec string_of_query query = match query with
@@ -164,7 +162,7 @@ let rec string_of_query query = match query with
 
 and string_of_projection proj = match proj with
 	| PROJAsterisk -> "*"
-	| PROJColumns(col_ext) -> string_of_column_extends col_ext
+	| PROJColumns(col_extends) -> string_of_column_extends col_extends
 
 
 and string_of_column column = match column with
@@ -172,15 +170,10 @@ and string_of_column column = match column with
 	| COLExprId(expr, s) -> Printf.sprintf "%s AS %s" (string_of_expression expr) s
 
 
-and string_of_column_extends col_ext = match col_ext with
-	| COLEXTSingle(col) -> string_of_column col
-	| COLEXTMany(col_ext1, col_ext2) -> Printf.sprintf "%s %s"
-												 (string_of_column_extends col_ext1)
-												 (string_of_column_extends col_ext2)
+and string_of_column_extends col_list = match col_list with
+	| COLEXTSingle(c) -> (string_of_column c)
+	| COLEXTMany(c1,c2) -> (string_of_column_extends c1)^", "^(string_of_column_extends c2)
 
-(*and string_of_column_list col_list = match col_list with
-	| [] -> ""
-	| h :: q -> (string_of_column h) ^ (string_of_column_list_temp q)*)
 
 and string_of_expression expr = match expr with
 	| EXPRAttribute(str1, str2) -> Printf.sprintf "%s.%s" str1 str2
@@ -299,3 +292,6 @@ let rec eval_expression env expr = match expr with
 	| EXPRLower(expr1) -> 
 	| EXPRUpper(expr1) -> 
 	| EXPRSubString(expr1, expr2, expr3) -> *)*)
+
+
+(* End of string_of section *)

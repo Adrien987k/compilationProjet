@@ -55,8 +55,8 @@ val cst_condIsTrue: condition -> condition
 val cst_condIsNotTrue: condition -> condition
 val cst_condIsFalse: condition -> condition
 val cst_condIsNotFalse: condition -> condition
-val cst_condIsUnknow: condition -> condition
-val cst_condIsNotUnknow: condition -> condition
+val cst_condIsUnknown: condition -> condition
+val cst_condIsNotUnknown: condition -> condition
 
 val cst_predCond: condition -> predicate
 val cst_predEq: expression -> expression -> predicate
