@@ -145,7 +145,7 @@ let cst_squerySelectDistinctFromWhere p s c = SQUERYSelectDistinctFromWhere(p,s,
 
 
 
-let string_of_query query = match query with
+let rec string_of_query query = match query with
 	| SQUERYSelectFromWhere(proj, src, cond) -> Printf.sprintf "SELECT %s\nFROM %s\nWHERE %s"
 													   (string_of_projection proj)
 													   (string_of_source src)
@@ -162,9 +162,9 @@ let string_of_query query = match query with
 
 (* string_of section *)
 
-let string_of_projection proj = match proj with
-	| ProjAsterisk -> "*"
-	| PROJColumns(col_list) -> string_of_columns_list col_list
+and string_of_projection proj = match proj with
+	| PROJAsterisk -> "*"
+	| PROJColumns(col_ext) -> string_of_column_extends col_ext
 
 
 and string_of_column column = match column with
@@ -172,9 +172,15 @@ and string_of_column column = match column with
 	| COLExprId(expr, s) -> Printf.sprintf "%s AS %s" (string_of_expression expr) s
 
 
-and string_of_column_list col_list = match col_list with
+and string_of_column_extends col_ext = match col_ext with
+	| COLEXTSingle(col) -> string_of_column col
+	| COLEXTMany(col_ext1, col_ext2) -> Printf.sprintf "%s %s"
+												 (string_of_column_extends col_ext1)
+												 (string_of_column_extends col_ext2)
+
+(*and string_of_column_list col_list = match col_list with
 	| [] -> ""
-	| h :: q -> (string_of_column h) ^ (string_of_column_list_temp q)
+	| h :: q -> (string_of_column h) ^ (string_of_column_list_temp q)*)
 
 and string_of_expression expr = match expr with
 	| EXPRAttribute(str1, str2) -> Printf.sprintf "%s.%s" str1 str2
@@ -203,9 +209,9 @@ and string_of_expression expr = match expr with
 and string_of_source source = match source with
 	| SOURID(str1) -> str1
 	| SOURSQuery(squery) -> Printf.sprintf "(%s)" (string_of_query squery)
-	| SOURComma(src1, src2) -> printf.sprintf "%s, %s" (string_of_source src1)
+	| SOURComma(src1, src2) -> Printf.sprintf "%s, %s" (string_of_source src1)
 													   (string_of_source src2)
-	| SOURCrossJoin(src1, src2) -> printf.sprintf "%s CROSS JOIN %s" 
+	| SOURCrossJoin(src1, src2) -> Printf.sprintf "%s CROSS JOIN %s" 
 													   (string_of_source src1)
 													   (string_of_source src2)
 	| SOURJoinOn(src1, join, src2, cond) -> Printf.sprintf "%s %s %s ON %s"
@@ -227,7 +233,7 @@ and string_of_joinOp join = match join with
 
 and string_of_condition cond = match cond with
 	| CONDPred(pred1) -> string_of_predicate pred1
-	| CONDNotCond(cond1) -> Printf.sprintf "NOT %s" (string_of_cond cond1)
+	| CONDNotCond(cond1) -> Printf.sprintf "NOT %s" (string_of_condition cond1)
 	| CONDAnd(cond1, cond2) -> Printf.sprintf "%s AND %s" (string_of_condition cond1)
 														  (string_of_condition cond2)
 	| CONDOr(cond1, cond2) -> Printf.sprintf "%s OR %s" (string_of_condition cond1)
@@ -267,5 +273,29 @@ and string_of_predicate pred = match pred with
 	| PREDNotNull(expr1) -> Printf.sprintf "%s IS NOT NULL"
 													(string_of_expression expr1)
 
+module R = Relation.Make(Value)
 
 (* End of string_of section *)
+
+(* let eval_condition env cond = match cond with
+	| CONDPred(pred1) -> eval_predicate env pred1
+	| CONDNotCond(cond1) -> *)
+
+let rec eval_expression env expr = match expr with 
+	| EXPRAttribute(str1, str2) ->  let att = Env.find (str1 ^ "." ^ str2) env in
+									(match att with
+										| None -> failwith ""
+										| Some(a) -> (fun t -> R.attribute a t)) 
+	| EXPRPar(expr1) -> eval_expression env expr1
+	(*| EXPRInt(n) -> (fun t -> VInt(n))
+	| EXPRFloat(r) -> (fun t -> VFloat(r))
+	(*| EXPRPlus(expr1, expr2) -> (fun t -> )
+	| EXPRMinus(expr1, expr2) -> 
+	| EXPRAstrisk(expr1, expr2) -> 
+	| EXPRSlash(expr1, expr2) -> 
+	| EXPRUMinus(expr1) -> *)
+	| EXPRString(str1) -> (fun t -> VVChar(str1))
+	(*| EXPRPipe(expr1, expr2) -> 
+	| EXPRLower(expr1) -> 
+	| EXPRUpper(expr1) -> 
+	| EXPRSubString(expr1, expr2, expr3) -> *)*)
