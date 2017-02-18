@@ -44,10 +44,20 @@ query:
 	| SELECT DISTINCT projection FROM source WHERE condition	{ cst_squerySelectDistinctFromWhere $3 $5 $7 }
 ;
 
-projection:
-	| ASTERISK	{ cst_projAsterisk }
-	| ??
+column:
+	| expression			{ cst_colExpr $1 }
+	| expression STRING		{ cst_colExprId $1 $2 }
+
+columnExtends:
+	| column 								{ cst_colExtendsSingle $1 }
+	| columnExtends COMMA columnExtends 	{ cst_colExtendsMany $1 $3 }
 ;
+
+projection:
+	| ASTERISK			{ cst_projAsterisk }
+	| columnExtends		{ cst_projColumns $1 }
+;
+
 
 source:
 	| ID 										{ cst_sourId $1 }
