@@ -19,9 +19,13 @@ and column =
 	| COLExpr of expression
 	| COLExprId of expression * string
 
+and columnExtends =
+	| COLEXTSingle of column
+	| COLEXTMany of columnExtends * columnExtends
+
 and projection = 
 	| PROJAsterisk
-	| PROJColumns of column list
+	| PROJColumns of columnExtends
 
 and source = 
 	| SOURID of string
@@ -91,8 +95,11 @@ let cst_exprSubString e1 e2 e3 = EXPRSubString(e1,e2,e3)
 let cst_columnExpr e = COLExpr(e)
 let cst_columnExprId e s = COLExprId(e,s)
 
+let cst_columnExtendsSingle c = COLEXTSingle(c)
+let cst_columnExtendsMany c1 c2 = COLEXTMany(c1,c2)
+
 let cst_projAsterisk = PROJAsterisk
-let cst_projColumns l = PROJColumns(l)
+let cst_projColumns c = PROJColumns(c)
 
 let cst_sourId s = SOURID(s)
 let cst_sourSQuery sq = SOURSQuery(sq)

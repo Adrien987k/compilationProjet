@@ -1,5 +1,6 @@
 type expression
 type column
+type columnExtends
 type projection
 type source
 type joinOp
@@ -25,8 +26,11 @@ val cst_exprSubString: expression -> expression -> expression -> expression
 val cst_columnExpr: expression -> column
 val cst_columnExprId: expression -> string -> column
 
+val cst_columnExtendsSingle: column -> columnExtends
+val cst_columnExtendsMany: columnExtends -> columnExtends -> columnExtends
+
 val cst_projAsterisk: projection
-val cst_projColumns: column list -> projection
+val cst_projColumns: columnExtends -> projection
 
 val cst_sourId: string -> source
 val cst_sourSQuery: simple_query -> source
