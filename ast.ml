@@ -74,7 +74,6 @@ and simple_query =
 	| SQUERYSelectAllFromWhere of projection * source * condition
 	| SQUERYSelectDistinctFromWhere of projection * source * condition
 
-
 (* constructors *)
 
 let cst_exprAttribute s1 s2 = EXPRAttribute(s1,s2)
@@ -124,8 +123,8 @@ let cst_condIsTrue c = CONDIsTrue(c)
 let cst_condIsNotTrue c = CONDIsNotTrue(c)
 let cst_condIsFalse c = CONDIsFalse(c)
 let cst_condIsNotFalse c = CONDIsNotFalse(c)
-let cst_condIsUnknow c = CONDIsUnknown(c)
-let cst_condIsNotUnknow c = CONDIsNotUnknown(c)
+let cst_condIsUnknown c = CONDIsUnknown(c)
+let cst_condIsNotUnknown c = CONDIsNotUnknown(c)
 
 let cst_predCond c = PREDCond(c)
 let cst_predEq e1 e2 = PREDEq(e1,e2)
@@ -144,8 +143,7 @@ let cst_squerySelectAllFromWhere p s c = SQUERYSelectAllFromWhere(p,s,c)
 let cst_squerySelectDistinctFromWhere p s c = SQUERYSelectDistinctFromWhere(p,s,c)
 
 
-
-let string_of_query query = match query with
+let rec string_of_query query = match query with
 	| SQUERYSelectFromWhere(proj, src, cond) -> Printf.sprintf "SELECT %s\nFROM %s\nWHERE %s"
 													   (string_of_projection proj)
 													   (string_of_source src)
@@ -162,9 +160,9 @@ let string_of_query query = match query with
 
 (* string_of section *)
 
-let string_of_projection proj = match proj with
-	| ProjAsterisk -> "*"
-	| PROJColumns(col_list) -> string_of_columns_list col_list
+and string_of_projection proj = match proj with
+	| PROJAsterisk -> "*"
+	| PROJColumns(col_extends) -> string_of_column_extends col_extends
 
 
 and string_of_column column = match column with
@@ -172,9 +170,9 @@ and string_of_column column = match column with
 	| COLExprId(expr, s) -> Printf.sprintf "%s AS %s" (string_of_expression expr) s
 
 
-and string_of_column_list col_list = match col_list with
-	| [] -> ""
-	| h :: q -> (string_of_column h) ^ (string_of_column_list_temp q)
+and string_of_column_extends col_list = match col_list with
+	| COLEXTSingle(c) -> (string_of_column c)
+	| COLEXTMany(c1,c2) -> (string_of_column_extends c1)^", "^(string_of_column_extends c2)
 
 and string_of_expression expr = match expr with
 	| EXPRAttribute(str1, str2) -> Printf.sprintf "%s.%s" str1 str2
@@ -203,9 +201,9 @@ and string_of_expression expr = match expr with
 and string_of_source source = match source with
 	| SOURID(str1) -> str1
 	| SOURSQuery(squery) -> Printf.sprintf "(%s)" (string_of_query squery)
-	| SOURComma(src1, src2) -> printf.sprintf "%s, %s" (string_of_source src1)
+	| SOURComma(src1, src2) -> Printf.sprintf "%s, %s" (string_of_source src1)
 													   (string_of_source src2)
-	| SOURCrossJoin(src1, src2) -> printf.sprintf "%s CROSS JOIN %s" 
+	| SOURCrossJoin(src1, src2) -> Printf.sprintf "%s CROSS JOIN %s" 
 													   (string_of_source src1)
 													   (string_of_source src2)
 	| SOURJoinOn(src1, join, src2, cond) -> Printf.sprintf "%s %s %s ON %s"
@@ -227,7 +225,7 @@ and string_of_joinOp join = match join with
 
 and string_of_condition cond = match cond with
 	| CONDPred(pred1) -> string_of_predicate pred1
-	| CONDNotCond(cond1) -> Printf.sprintf "NOT %s" (string_of_cond cond1)
+	| CONDNotCond(cond1) -> Printf.sprintf "NOT %s" (string_of_condition cond1)
 	| CONDAnd(cond1, cond2) -> Printf.sprintf "%s AND %s" (string_of_condition cond1)
 														  (string_of_condition cond2)
 	| CONDOr(cond1, cond2) -> Printf.sprintf "%s OR %s" (string_of_condition cond1)
@@ -266,6 +264,6 @@ and string_of_predicate pred = match pred with
 													(string_of_expression expr1)
 	| PREDNotNull(expr1) -> Printf.sprintf "%s IS NOT NULL"
 													(string_of_expression expr1)
-
+;;
 
 (* End of string_of section *)

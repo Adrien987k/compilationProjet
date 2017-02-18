@@ -45,12 +45,12 @@ query:
 ;
 
 column:
-	| expression			{ cst_colExpr $1 }
-	| expression STRING		{ cst_colExprId $1 $2 }
+	| expression			{ cst_columnExpr $1 }
+	| expression STRING		{ cst_columnExprId $1 $2 }
 
 columnExtends:
-	| column 								{ cst_colExtendsSingle $1 }
-	| columnExtends COMMA columnExtends 	{ cst_colExtendsMany $1 $3 }
+	| column 								{ cst_columnExtendsSingle $1 }
+	| columnExtends COMMA columnExtends 	{ cst_columnExtendsMany $1 $3 }
 ;
 
 projection:
@@ -63,12 +63,12 @@ source:
 	| ID 										{ cst_sourId $1 }
 	| LPAR query RPAR							{ cst_sourSQuery $2 }
 	| source COMMA source						{ cst_sourComma $1 $3 }
-	| source CROSS JOIN source					{ cst_sourCrossJoin $1 $4}
-	| source JOIN source ON condition 			{ cst_sourJoinOn $1 (cst_join) $3 $5}
+	| source CROSS JOIN source					{ cst_sourCrossJoin $1 $4 }
+	| source JOIN source ON condition 			{ cst_sourJoinOn $1 (cst_join) $3 $5 }
 	| source INNER JOIN source ON condition		{ cst_sourJoinOn $1 (cst_innerjoin) $4 $6}
-	| source RIGHT source ON condition			{ cst_sourJoinOn $1 (cst_right) $4 $6}
-	| source LEFT source ON condition			{ cst_sourJoinOn $1 (cst_left) $4 $6}
-	| source FULL source ON condition			{ cst_sourJoinOn $1 (cst_full) $4 $6}
+	| source RIGHT source ON condition			{ cst_sourJoinOn $1 (cst_right) $3 $5 }
+	| source LEFT source ON condition			{ cst_sourJoinOn $1 (cst_left) $3 $5 }
+	| source FULL source ON condition			{ cst_sourJoinOn $1 (cst_full) $3 $5 }
 	| source OUTER RIGHT source ON condition	{ cst_sourJoinOn $1 (cst_outerright) $4 $6}
 	| source OUTER LEFT source ON condition		{ cst_sourJoinOn $1 (cst_outerleft) $4 $6}
 	| source OUTER FULL source ON condition		{ cst_sourJoinOn $1 (cst_outerfull) $4 $6}
