@@ -22,8 +22,10 @@
 
 /* ------------------ TO DO ------------------  */
 
+%nonassoc CROSS FULL INNER JOIN LEFT OUTER RIGHT
 %nonassoc EQ NEQ LT GT LE GE
-%left PLUS MINUS SLASH ASTERISK
+%left PPIPE COMMA
+%left PLUS MINUS SLASH ASTERISK 
 %left OR
 %left AND
 %left NOT
