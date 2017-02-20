@@ -3,7 +3,6 @@
 %}
 
 /* Terminals */
-
 %token ASTERISK QQUOTE QUOTE PPIPE COMMA
 %token AS LOWER UPPER SUBSTRING FROM FOR
 %token DOT LPAR RPAR 
@@ -17,19 +16,20 @@
 		FROM FULL GROUP HAVING INNER IS JOIN LEFT LOWER
 		NOT NULL ON OR OUTER RIGHT SELECT SUBSTRING TRUE UNKNOWN
 		UPPER WHERE 
-
+%token PC
 /* Priorities and associativity */
 
 /* ------------------ TO DO ------------------  */
 
-%nonassoc CROSS FULL INNER JOIN LEFT OUTER RIGHT
+%nonassoc CROSS FULL INNER JOIN LEFT OUTER RIGHT ASTERISK
 %nonassoc EQ NEQ LT GT LE GE
 %left PPIPE COMMA
-%left PLUS MINUS SLASH ASTERISK 
+%left PLUS MINUS SLASH TIMES
 %left OR
 %left AND
 %left NOT
 %left IS
+%nonassoc PC
 
 %type <simple_query> ansyn
 %start ansyn
@@ -37,10 +37,12 @@
 %%
 
 ansyn:
-	| query { $1 }
+	| PC ansyn { $2 } 
+	| query PC { $1 }
 ;
 
 query:
+	| SELECT projection FROM source								{ cst_squerySelectFrom $2 $4 }
 	| SELECT projection FROM source WHERE condition				{ cst_squerySelectFromWhere $2 $4 $6 }
 	| SELECT ALL projection FROM source WHERE condition			{ cst_squerySelectAllFromWhere $3 $5 $7 }
 	| SELECT DISTINCT projection FROM source WHERE condition	{ cst_squerySelectDistinctFromWhere $3 $5 $7 }
@@ -110,7 +112,7 @@ expression:
 	| FLOAT 														{ cst_exprFloat $1 }
 	| expression PLUS expression 									{ cst_exprPlus $1 $3 }
 	| expression MINUS expression 									{ cst_exprMinus $1 $3 }
-	| expression ASTERISK expression 								{ cst_exprAsterisk $1 $3 }
+	| expression ASTERISK expression %prec TIMES 					{ cst_exprAsterisk $1 $3 }
 	| expression SLASH expression 									{ cst_exprSlash $1 $3 }
 	| MINUS expression 												{ cst_exprUMinus $2 }
 	| STRING 														{ cst_exprString $1 }

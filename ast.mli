@@ -70,6 +70,9 @@ val cst_predNotBetween: expression -> expression -> expression -> predicate
 val cst_predNull: expression -> predicate
 val cst_predNotNull: expression -> predicate
 
+val cst_squerySelectFrom: projection -> source -> simple_query
 val cst_squerySelectFromWhere: projection -> source -> condition -> simple_query
 val cst_squerySelectAllFromWhere: projection -> source -> condition -> simple_query
 val cst_squerySelectDistinctFromWhere: projection -> source -> condition -> simple_query
+
+val string_of_query: simple_query -> string
