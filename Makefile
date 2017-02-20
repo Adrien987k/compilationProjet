@@ -42,7 +42,7 @@ $(EXEC): $(OBJECTS)
 	ocamlc -o $@ $(filter-out %cmi,$^)
 
 .mly.ml:
-	$(OCAMLYACC) --strict -v $<
+	$(OCAMLYACC) -v $<
 	@rm -rf $(patsubst %.mly,%.mli,$<)
 
 .mll.ml:

@@ -4,12 +4,12 @@ exception Eof
 
 let keyword_table = Hashtbl.create 53
 let _ = 
-    List.iter (fun (kwr, tok) -> Hashtbl.add keyword_table kwd tok)
+    List.iter (fun (kwr, tok) -> Hashtbl.add keyword_table kwr tok)
               [ "ALL", ALL;
                 "AND", AND;
                 "AS", AS;
                 "BETWEEN", BETWEEN;
-                "BY", BY;
+                "BY", BY;
                 "CROSS", CROSS;
                 "DISTINCT", DISTINCT;
                 "FALSE", FALSE;
@@ -32,7 +32,7 @@ let _ =
                 "SELECT", SELECT;
                 "SUBSTRING", SUBSTRING;
                 "TRUE", TRUE;
-                "UNKNOW", UNKNOW;
+                "UNKNOWN", UNKNOWN;
                 "UPPER", UPPER;
                 "WHERE", WHERE;
              ]
@@ -45,7 +45,7 @@ let _ =
 rule anlex = parse
   | [' ' '\t' '\n' '\r']                  { anlex lexbuf }
   | "--"                                  { comlex lexbuf }
-  | '*'                                   { ASTERISK }
+  | '*'                                   { ASTERISK }
   | "\""                                  { QQUOTE }
   | '.'                                   { DOT }
   | '('                                   { LPAR }
@@ -54,14 +54,14 @@ rule anlex = parse
   | '-'                                   { MINUS }
   | '/'                                   { SLASH }
   | "||"                                  { PPIPE }
-  | ','                                   { COMMA }
+  | ','                                   { COMMA }
   | '='                                   { EQ }
   | "<>"                                  { NEQ }
   | '<'                                   { LT }
   | '>'                                   { GT }
   | "<="                                  { LE }
   | ">="                                  { GE }
-  | ['0'-'9']+ as lxm                     { INT(int_of_string lxm) }
+  | ['0'-'9']+ as lxm                     { INT(int_of_string lxm) }
   | (['0'-'9']+ '.' (['0'-'9']+)? (('e' | 'E') ('-' | '+')? ['0'-'9']+ ) |
     '.'  ['0'-'9']+ ['0'-'9']+ ('e' | 'E' ('-' | '+')? ['0'-'9']+ )?) as lxm
                                           { FLOAT(float_of_string lxm) }
@@ -72,7 +72,7 @@ rule anlex = parse
                                               Hashtbl.find keyword_table lxm
                                             with Not_found -> ID(lxm) 
                                           }
-  | eof                                   { raise Eof }
+  | eof                                   { raise Eof }
   | _ as lxm                              { 
                                              Printf.eprintf "Unknown character '%c': ignored\n" lxm; flush stderr;
                                               anlex lexbuf
