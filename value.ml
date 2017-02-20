@@ -79,16 +79,39 @@ let to_domain d =
 
 (* Fonction spécifique de manipulation des valeurs (comparaison, addition, concaténation, etc.) *)
 
-let add v1 v2 =
-  match (v1, v2) with
-  | VInt i1, VInt i2 -> VInt (i1 + i2)
-  | VFloat f1, VFloat f2 -> VFloat (f1 +. f2)
-  | _ -> failwith (Printf.sprintf "Value: add: type error: '%s + %s'" (string_of_value v1) (string_of_value v2))
+let app_arithm v1 v2 op1 op2 =
+	match (v1,v2) with 
+	| VInt i1, VInt i2 -> VInt (op1 i1 i2)
+	| VInt i1, VFloat f1 -> VFloat(op2 (float_of_int i1) f1)
+  | VFloat f1, VInt i1 -> VFloat(op2  f1 (float_of_int i1))
+	| VFloat f1, VFloat f2 -> VFloat (op2 f1 f2)
+	| _ -> failwith (Printf.sprintf "Value: add: type error: '%s + %s'" (string_of_value v1) (string_of_value v2))
+
+let add v1 v2 = app_arithm v1 v2 (+) (+.)
+let sub v1 v2 = app_arithm v1 v2 (-) (-.)
+let mul v1 v2 = app_arithm v1 v2 ( * ) ( *. )
+let div v1 v2 = app_arithm v1 v2 (/) (/.)
+
 
 let concat v1 v2 =
   match (v1, v2) with
   | VVChar s1, VVChar s2 -> VVChar (s1 ^ s2)
+  | VVChar s1, VInt(i) -> VVChar (s1 ^ (string_of_int i))
+  | VVChar s1, VFloat(f) -> VVChar (s1 ^ (string_of_float f))
+  | VInt(i), VVChar s1 -> failwith (Printf.sprintf "Value: concat: type error: '%s || %s' Try to invert the order." (string_of_value v1) (string_of_value v2))
+  | VFloat(f), VVChar s1 -> failwith (Printf.sprintf "Value: concat: type error: '%s || %s' Try to invert the order." (string_of_value v1) (string_of_value v2))
   | _ -> failwith (Printf.sprintf "Value: concat: type error: '%s || %s'" (string_of_value v1) (string_of_value v2))
 
+let app_string s1 f e =
+  match s1 with
+  | VVChar s -> VVChar( (f s) ) 
+  | _ -> failwith (Printf.sprintf "Value: concat: type error: %s %s" e (string_of_value s1))
 
 
+let lower s = app_string s String.lowercase ("LOWER")
+let upper s = app_string s String.uppercase ("UPPER")
+
+let sub_string s i1 i2 =
+  match (s,i1,i2) with
+  | VVChar s, VInt i1, VInt i2 -> VVChar(String.sub s i1 i2)
+  | _ -> failwith (Printf.sprintf "Value: concat: type error: SUBSTRING %s %s %s" (string_of_value s) (string_of_value i2) (string_of_value i1))

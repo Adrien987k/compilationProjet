@@ -1,3 +1,5 @@
+
+
 type expression = 
 	| EXPRAttribute of string * string (* id.id *)
 	| EXPRPar of expression
@@ -9,7 +11,7 @@ type expression =
 	| EXPRSlash of expression * expression
 	| EXPRUMinus of expression
 	| EXPRString of string
-	| EXPRPipe of expression * expression
+	| EXPRPPipe of expression * expression
 	| EXPRLower of expression
 	| EXPRUpper of expression
 	| EXPRSubString of expression * expression * expression
@@ -87,7 +89,7 @@ let cst_exprAsterisk e1 e2 = EXPRAstrisk(e1,e2)
 let cst_exprSlash e1 e2 = EXPRSlash(e1,e2)
 let cst_exprUMinus e = EXPRUMinus(e)
 let cst_exprString s = EXPRString(s) 
-let cst_exprPipe e1 e2 = EXPRPipe(e1,e2)
+let cst_exprPPipe e1 e2 = EXPRPPipe(e1,e2)
 let cst_exprLower e = EXPRLower(e)
 let cst_exprUpper e = EXPRUpper(e)
 let cst_exprSubString e1 e2 e3 = EXPRSubString(e1,e2,e3)
@@ -195,7 +197,7 @@ and string_of_expression expr = match expr with
 														  (string_of_expression expr2)
 	| EXPRUMinus(expr1) -> Printf.sprintf "-%s" (string_of_expression expr1)
 	| EXPRString(str1) -> str1
-	| EXPRPipe(expr1, expr2) -> Printf.sprintf "%s || %s" (string_of_expression expr1)
+	| EXPRPPipe(expr1, expr2) -> Printf.sprintf "%s || %s" (string_of_expression expr1)
 														  (string_of_expression expr2)
 	| EXPRLower(expr1) -> Printf.sprintf "LOWER(%s)" (string_of_expression expr1)
 	| EXPRUpper(expr1) -> Printf.sprintf "UPPER(%s)" (string_of_expression expr1)
@@ -271,6 +273,8 @@ and string_of_predicate pred = match pred with
 	| PREDNotNull(expr1) -> Printf.sprintf "%s IS NOT NULL"
 													(string_of_expression expr1)
 
+
+open Value
 module R = Relation.Make(Value)
 
 (* End of string_of section *)
@@ -280,23 +284,38 @@ module R = Relation.Make(Value)
 	| CONDNotCond(cond1) -> *)
 
 let rec eval_expression env expr = match expr with 
-	| EXPRAttribute(str1, str2) ->  let att = Env.find (str1 ^ "." ^ str2) env in
-									(match att with
-										| None -> failwith ""
-										| Some(a) -> (fun t -> R.attribute a t)) 
+	| EXPRAttribute(str1, str2) ->  let attr1 = Env.find str1 env in
+									let attr2 = Env.find str2 env in
+									(match (attr1,attr2) with
+										| (_,None)  
+										| (None,_) -> failwith ""
+										| (Some(_),Some(a)) -> (fun t -> R.attribute a t)) 
 	| EXPRPar(expr1) -> eval_expression env expr1
-	(*| EXPRInt(n) -> (fun t -> VInt(n))
-	| EXPRFloat(r) -> (fun t -> VFloat(r))
-	(*| EXPRPlus(expr1, expr2) -> (fun t -> )
-	| EXPRMinus(expr1, expr2) -> 
-	| EXPRAstrisk(expr1, expr2) -> 
-	| EXPRSlash(expr1, expr2) -> 
-	| EXPRUMinus(expr1) -> *)
-	| EXPRString(str1) -> (fun t -> VVChar(str1))
-	(*| EXPRPipe(expr1, expr2) -> 
-	| EXPRLower(expr1) -> 
-	| EXPRUpper(expr1) -> 
-	| EXPRSubString(expr1, expr2, expr3) -> *)*)
+	| EXPRInt(_)
+	| EXPRFloat(_)	
+	| EXPRPlus(_, _)
+	| EXPRMinus(_, _) 
+	| EXPRAstrisk(_, _)
+	| EXPRSlash(_, _)
+	| EXPRUMinus(_) 
+	| EXPRString(_) 
+	| EXPRPPipe(_, _) 
+	| EXPRLower(_) 
+	| EXPRUpper(_) 
+	| EXPRSubString(_,_,_) -> (fun t -> Some(eval_expression_value expr))
 
+and eval_expression_value expr = match expr with
+	| EXPRInt(i) -> VInt(i)
+	| EXPRFloat(f) -> VFloat(f)
+	| EXPRString(s) -> VVChar(s)
+	| EXPRPlus(expr1, expr2) -> add (eval_expression_value expr1) (eval_expression_value expr2)
+	| EXPRMinus(expr1, expr2) -> sub (eval_expression_value expr1) (eval_expression_value expr2)
+	| EXPRAstrisk(expr1, expr2) -> mul (eval_expression_value expr1) (eval_expression_value expr2)
+	| EXPRSlash(expr1, expr2) -> div (eval_expression_value expr1) (eval_expression_value expr2)
+	| EXPRUMinus(expr1) -> mul (eval_expression_value expr1) (VInt(-1))
+	| EXPRPPipe(expr1, expr2) -> concat (eval_expression_value expr1 ) (eval_expression_value expr2)
+	| EXPRLower(expr1) -> lower (eval_expression_value expr1)
+	| EXPRUpper(expr1) -> upper (eval_expression_value expr1)
+	| EXPRSubString(expr1, expr2, expr3) -> sub_string (eval_expression_value expr1) (eval_expression_value expr2) (eval_expression_value expr3)
+	| _ -> failwith "eval_expression_value: invalid expression value"
 
-(* End of string_of section *)

@@ -116,7 +116,7 @@ expression:
 	| expression SLASH expression 									{ cst_exprSlash $1 $3 }
 	| MINUS expression 												{ cst_exprUMinus $2 }
 	| STRING 														{ cst_exprString $1 }
-	| expression PPIPE expression 									{ cst_exprPipe $1 $3 }
+	| expression PPIPE expression 									{ cst_exprPPipe $1 $3 }
 	| LOWER LPAR expression RPAR 									{ cst_exprLower $3 }
 	| UPPER LPAR expression RPAR 									{ cst_exprUpper $3 }
 	| SUBSTRING LPAR expression FROM expression FOR expression RPAR { cst_exprSubString $3 $5 $7}

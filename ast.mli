@@ -18,7 +18,7 @@ val cst_exprAsterisk: expression -> expression -> expression
 val cst_exprSlash: expression -> expression -> expression
 val cst_exprUMinus: expression -> expression
 val cst_exprString: string -> expression
-val cst_exprPipe: expression -> expression -> expression
+val cst_exprPPipe: expression -> expression -> expression
 val cst_exprLower: expression -> expression
 val cst_exprUpper: expression -> expression
 val cst_exprSubString: expression -> expression -> expression -> expression
