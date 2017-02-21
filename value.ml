@@ -131,3 +131,12 @@ let lt v1 v2 = app_bool v1 v2 ("<") (<) (<)
 let le v1 v2 = app_bool v1 v2 ("<=") (>=) (>=)
 let gt v1 v2 = app_bool v1 v2 (">") (>) (>)
 let ge v1 v2 = app_bool v1 v2 (">=") (>=) (>=)
+
+let between v1 v2 v3 = match (v1, v2, v3) with
+  | VInt i1, VInt i2, VInt i3 -> (i1 >= i2) && (i1 <= i3)
+  | VFloat f1, VFloat f2, VFloat f3 -> (f1 >= f2) && (f1 <= f3)
+  | VVChar s1, VVChar s2, VVChar s3 -> ((String.compare s1 s2) >= 0) &&
+                                       ((String.compare s1 s3) <= 0) 
+  | _ -> failwith "Error: try to apply between with invalid arguments"
+
+let not_between v1 v2 v3 = not (between v1 v2 v3)

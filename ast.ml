@@ -277,6 +277,17 @@ and string_of_predicate pred = match pred with
 open Value
 module R = Relation.Make(Value)
 
+
+let is_null env expr = match expr with 
+	| EXPRAttribute(str1, str2) -> let attr1 = Env.find str1 env in
+								   let attr2 = Env.find str2 env in
+								   (match (attr1,attr2) with
+										| (Some(_),None) -> true 
+										| (Some(_),Some(a)) -> false
+										| (None,_) -> failwith "")
+
+let is_not_null env expr = not (is_null env expr)
+
 (* End of string_of section *)
 
 let rec eval_condition env cond = match cond with
@@ -313,26 +324,29 @@ and eval_predicate pred = match pred with
 	| PREDNeq(expr1, expr2) -> 
 	| PREDLt(expr1, expr2) -> 
 	| PREDLe(expr1, expr2) -> 
-	| PREDGt(expr1, expr2) -> 
+	| PREDGt(expr1, expr2) -> (fun t -> gt (eval_expression_value expr1) (eval_expression_value expr2))
 	| PREDGe(expr1, expr2) -> 
 	| PREDBetween(expr1, expr2, expr3) -> 
 	| PREDNotBetween(expr1, expr2, expr3) ->
 	| PREDNull(expr1) -> 
 	| PREDNotNull(expr1) -> 
 *)
-and eval_predicate_bool pred = match pred with
-(*
-	| PREDCond(cond1) -> eval_condition cond1 *)
+and eval_predicate_bool env pred = match pred with
+	| PREDCond(cond1) -> eval_condition_bool cond1 
 	| PREDEq(expr1, expr2) -> eq (eval_expression_value expr1) (eval_expression_value expr2)
 	| PREDNeq(expr1, expr2) -> eq (eval_expression_value expr1) (eval_expression_value expr2)
 	| PREDLt(expr1, expr2) -> lt (eval_expression_value expr1) (eval_expression_value expr2)
 	| PREDLe(expr1, expr2) -> le (eval_expression_value expr1) (eval_expression_value expr2)
 	| PREDGt(expr1, expr2) -> gt (eval_expression_value expr1) (eval_expression_value expr2)
 	| PREDGe(expr1, expr2) -> ge (eval_expression_value expr1) (eval_expression_value expr2)
-	(*| PREDBetween(expr1, expr2, expr3) -> 
-	| PREDNotBetween(expr1, expr2, expr3) ->
-	| PREDNull(expr1) -> 
-	| PREDNotNull(expr1) ->*)
+	| PREDBetween(expr1, expr2, expr3) -> between (eval_expression_value expr1)
+													(eval_expression_value expr2)
+													(eval_expression_value expr3)
+	| PREDNotBetween(expr1, expr2, expr3) -> not_between (eval_expression_value expr1)
+													     (eval_expression_value expr2)
+													     (eval_expression_value expr3)
+	| PREDNull(expr1) -> is_null env expr1
+	| PREDNotNull(expr1) -> is_not_null env expr1
 
 and eval_expression env expr = match expr with 
 	| EXPRAttribute(str1, str2) ->  let attr1 = Env.find str1 env in
