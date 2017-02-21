@@ -115,3 +115,19 @@ let sub_string s i1 i2 =
   match (s,i1,i2) with
   | VVChar s, VInt i1, VInt i2 -> VVChar(String.sub s i1 i2)
   | _ -> failwith (Printf.sprintf "Value: concat: type error: SUBSTRING %s %s %s" (string_of_value s) (string_of_value i2) (string_of_value i1))
+
+
+let app_bool v1 v2 e op_i op_f = match (v1, v2) with
+  | VInt i1, VInt i2 -> op_i i1 i2
+  | VInt i1, VFloat f1 -> op_f (float_of_int i1) f1
+  | VFloat f1, VInt i1 -> op_f f1 (float_of_int i1)
+  | VFloat f1, VFloat f2 -> op_f f1 f2
+  | _ -> failwith (Printf.sprintf "Error: try to compare values %s %s with %s" e
+                                    (string_of_value v1) (string_of_value v2))
+
+let eq v1 v2 = app_bool v1 v2 ("=") (=) (=)
+let neq v1 v2 = app_bool v1 v2 ("<>") (<>) (<>)
+let lt v1 v2 = app_bool v1 v2 ("<") (<) (<)
+let le v1 v2 = app_bool v1 v2 ("<=") (>=) (>=)
+let gt v1 v2 = app_bool v1 v2 (">") (>) (>)
+let ge v1 v2 = app_bool v1 v2 (">=") (>=) (>=)

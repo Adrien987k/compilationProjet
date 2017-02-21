@@ -279,11 +279,62 @@ module R = Relation.Make(Value)
 
 (* End of string_of section *)
 
-(* let eval_condition env cond = match cond with
-	| CONDPred(pred1) -> eval_predicate env pred1
-	| CONDNotCond(cond1) -> *)
+let rec eval_condition env cond = match cond with
+	| CONDPred(pred1) -> eval_predicate pred1
+	(*| CONDNotCond(cond1) -> 
+    | CONDAnd(cond1, cond2) -> 	
+	| CONDOr(cond1, cond2) -> 
+	| CONDIsTrue(cond1) -> 
+	| CONDIsNotTrue(cond1) ->
+	| CONDIsFalse(cond1) -> 
+	| CONDIsNotFalse(cond1) -> 
+	| CONDIsUnknown(cond1) -> 
+	| CONDIsNotUnknown(cond1) -> *)
 
-let rec eval_expression env expr = match expr with 
+and eval_condition_bool cond = match cond with
+	| CONDPred(pred1) -> eval_predicate pred1
+	(*| CONDNotCond(cond1) -> neg cond1 *)
+	| CONDAnd(cond1, cond2) -> if eval_condition_bool cond1 then eval_condition_bool cond2
+							   else false
+	| CONDOr(cond1, cond2) -> if eval_condition_bool cond1 then true 
+							  else eval_condition_bool cond2
+	| CONDIsTrue(cond1) -> eval_condition_bool cond1
+	| CONDIsNotTrue(cond1) -> not (eval_condition_bool cond1)
+	| CONDIsFalse(cond1) -> not (eval_condition_bool cond1)
+	| CONDIsNotFalse(cond1) -> (eval_condition_bool cond1)
+	(*| CONDIsUnknown(cond1) -> 
+	| CONDIsNotUnknown(cond1) ->*)
+
+and eval_predicate pred = match pred with 
+	| _ -> true
+(*
+	| PREDCond(cond1) -> eval_condition cond1
+	| PREDEq(expr1, expr2) -> 
+	| PREDNeq(expr1, expr2) -> 
+	| PREDLt(expr1, expr2) -> 
+	| PREDLe(expr1, expr2) -> 
+	| PREDGt(expr1, expr2) -> 
+	| PREDGe(expr1, expr2) -> 
+	| PREDBetween(expr1, expr2, expr3) -> 
+	| PREDNotBetween(expr1, expr2, expr3) ->
+	| PREDNull(expr1) -> 
+	| PREDNotNull(expr1) -> 
+*)
+and eval_predicate_bool pred = match pred with
+(*
+	| PREDCond(cond1) -> eval_condition cond1 *)
+	| PREDEq(expr1, expr2) -> eq (eval_expression_value expr1) (eval_expression_value expr2)
+	| PREDNeq(expr1, expr2) -> eq (eval_expression_value expr1) (eval_expression_value expr2)
+	| PREDLt(expr1, expr2) -> lt (eval_expression_value expr1) (eval_expression_value expr2)
+	| PREDLe(expr1, expr2) -> le (eval_expression_value expr1) (eval_expression_value expr2)
+	| PREDGt(expr1, expr2) -> gt (eval_expression_value expr1) (eval_expression_value expr2)
+	| PREDGe(expr1, expr2) -> ge (eval_expression_value expr1) (eval_expression_value expr2)
+	(*| PREDBetween(expr1, expr2, expr3) -> 
+	| PREDNotBetween(expr1, expr2, expr3) ->
+	| PREDNull(expr1) -> 
+	| PREDNotNull(expr1) ->*)
+
+and eval_expression env expr = match expr with 
 	| EXPRAttribute(str1, str2) ->  let attr1 = Env.find str1 env in
 									let attr2 = Env.find str2 env in
 									(match (attr1,attr2) with
