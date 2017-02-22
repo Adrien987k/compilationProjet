@@ -1,5 +1,9 @@
 
 
+
+open Value
+module R = Relation.Make(Value)
+
 type expression = 
 	| EXPRAttribute of string * string (* id.id *)
 	| EXPRPar of expression
@@ -274,65 +278,66 @@ and string_of_predicate pred = match pred with
 													(string_of_expression expr1)
 
 
-open Value
-module R = Relation.Make(Value)
 
 
-let is_null env expr = match expr with 
+let is_null env expr = match expr with
 	| EXPRAttribute(str1, str2) -> let attr1 = Env.find str1 env in
 								   let attr2 = Env.find str2 env in
 								   (match (attr1,attr2) with
 										| (Some(_),None) -> true 
 										| (Some(_),Some(a)) -> false
 										| (None,_) -> failwith "")
+	| _ -> failwith (Printf.sprintf "Error: syntax error : %s IS (NOT) NULL" (string_of_expression expr))
 
 let is_not_null env expr = not (is_null env expr)
+(*
+let is_unknown env cond = match cond with
+	| CONDPred(pred1) -> *)
 
 (* End of string_of section *)
 
 let rec eval_condition env cond = match cond with
-	| CONDPred(pred1) -> eval_predicate pred1
-	(*| CONDNotCond(cond1) -> 
-    | CONDAnd(cond1, cond2) -> 	
-	| CONDOr(cond1, cond2) -> 
-	| CONDIsTrue(cond1) -> 
-	| CONDIsNotTrue(cond1) ->
-	| CONDIsFalse(cond1) -> 
-	| CONDIsNotFalse(cond1) -> 
+	| CONDPred(pred1) -> eval_predicate env pred1
+	| CONDNotCond(_) 
+    | CONDAnd(_, _) 	
+	| CONDOr(_, _) 
+	| CONDIsTrue(_) 
+	| CONDIsNotTrue(_)
+	| CONDIsFalse(_) 
+	| CONDIsNotFalse(_) -> (fun t -> eval_condition_bool env cond)
+	(* 
 	| CONDIsUnknown(cond1) -> 
 	| CONDIsNotUnknown(cond1) -> *)
 
-and eval_condition_bool cond = match cond with
-	| CONDPred(pred1) -> eval_predicate pred1
-	(*| CONDNotCond(cond1) -> neg cond1 *)
-	| CONDAnd(cond1, cond2) -> if eval_condition_bool cond1 then eval_condition_bool cond2
+and eval_condition_bool env cond = match cond with
+	| CONDPred(pred1) -> eval_predicate_bool env pred1
+	| CONDNotCond(cond1) -> not (eval_condition_bool env cond1) 
+	| CONDAnd(cond1, cond2) -> if eval_condition_bool env cond1 then eval_condition_bool env cond2
 							   else false
-	| CONDOr(cond1, cond2) -> if eval_condition_bool cond1 then true 
-							  else eval_condition_bool cond2
-	| CONDIsTrue(cond1) -> eval_condition_bool cond1
-	| CONDIsNotTrue(cond1) -> not (eval_condition_bool cond1)
-	| CONDIsFalse(cond1) -> not (eval_condition_bool cond1)
-	| CONDIsNotFalse(cond1) -> (eval_condition_bool cond1)
-	(*| CONDIsUnknown(cond1) -> 
-	| CONDIsNotUnknown(cond1) ->*)
+	| CONDOr(cond1, cond2) -> if eval_condition_bool env cond1 then true 
+							  else eval_condition_bool env cond2
+	| CONDIsTrue(cond1) -> eval_condition_bool env cond1
+	| CONDIsNotTrue(cond1) -> not (eval_condition_bool env cond1)
+	| CONDIsFalse(cond1) -> not (eval_condition_bool env cond1)
+	| CONDIsNotFalse(cond1) -> (eval_condition_bool env cond1)
+(*	| CONDIsUnknown(cond1) -> 
+	| CONDIsNotUnknown(cond1) -> *)
 
-and eval_predicate pred = match pred with 
-	| _ -> true
-(*
-	| PREDCond(cond1) -> eval_condition cond1
-	| PREDEq(expr1, expr2) -> 
-	| PREDNeq(expr1, expr2) -> 
-	| PREDLt(expr1, expr2) -> 
-	| PREDLe(expr1, expr2) -> 
-	| PREDGt(expr1, expr2) -> (fun t -> gt (eval_expression_value expr1) (eval_expression_value expr2))
-	| PREDGe(expr1, expr2) -> 
-	| PREDBetween(expr1, expr2, expr3) -> 
-	| PREDNotBetween(expr1, expr2, expr3) ->
-	| PREDNull(expr1) -> 
-	| PREDNotNull(expr1) -> 
-*)
+and eval_predicate env pred = match pred with 
+	| PREDCond(cond1) -> eval_condition env cond1
+	| PREDEq(_, _)
+	| PREDNeq(_, _) 
+	| PREDLt(_, _) 
+	| PREDLe(_, _) 
+	| PREDGt(_, _) 
+	| PREDGe(_, _)
+	| PREDBetween(_, _, _) 
+	| PREDNotBetween(_, _, _)
+	| PREDNull(_)
+	| PREDNotNull(_) -> (fun t -> eval_predicate_bool env pred)
+
 and eval_predicate_bool env pred = match pred with
-	| PREDCond(cond1) -> eval_condition_bool cond1 
+	| PREDCond(cond1) -> eval_condition_bool env cond1 
 	| PREDEq(expr1, expr2) -> eq (eval_expression_value expr1) (eval_expression_value expr2)
 	| PREDNeq(expr1, expr2) -> eq (eval_expression_value expr1) (eval_expression_value expr2)
 	| PREDLt(expr1, expr2) -> lt (eval_expression_value expr1) (eval_expression_value expr2)
@@ -384,3 +389,46 @@ and eval_expression_value expr = match expr with
 	| EXPRSubString(expr1, expr2, expr3) -> sub_string (eval_expression_value expr1) (eval_expression_value expr2) (eval_expression_value expr3)
 	| _ -> failwith "eval_expression_value: invalid expression value"
 
+
+let rec eval_source env source =
+	let join_app s1 s2 join = 
+		let source1 = eval_source env s1 in
+		let source2 = eval_source env s2 in
+		match source1, source2 with
+			| ((r1, g1), (r2, g2)) -> (join r1 r2, Env.union g1 g2)
+	in
+	let join_app_pred pred s1 s2 join = 
+		let source1 = eval_source env s1 in
+		let source2 = eval_source env s2 in
+		match source1, source2 with
+			| ((r1, g1), (r2, g2)) -> (join pred r1 r2, Env.union g1 g2)
+	in	
+	match source with
+	| SOURID(str1) -> begin match Env.find str1 env with
+						| None -> failwith "Error: unknown source"
+						| Some(a) -> a
+					  end
+	(*)
+	| SOURSQuery(squery) -> eval_query squery *)
+	| SOURComma(src1, src2)
+	| SOURCrossJoin(src1, src2) -> join_app src1 src2 R.crossjoin
+	| SOURJoinOn(src1, join, src2, cond) ->
+		let pred  = (fun t1 t2 -> ((eval_condition env cond) t1) && ((eval_condition env cond) t2)) in
+		match join with
+			| INNERJOIN -> join_app_pred pred src1 src2 R.innerjoin 
+			| OUTERLEFT -> join_app_pred pred src1 src2 R.leftouterjoin
+			| OUTERFULL -> join_app_pred pred src1 src2 R.fullouterjoin
+			(*
+			| JOIN -> 
+			| OUTERRIGHT -> 
+			| LEFT -> 
+			| RIGHT -> 
+			| FULL -> *) 
+
+
+(*
+let rec eval_query env query = match query with
+	| SQUERYSelectFrom(proj, src) -> 
+	| SQUERYSelectFromWhere(proj, src, cond) -> 
+	| SQUERYSelectAllFromWhere(proj, src, cond) -> 
+	| SQUERYSelectDistinctFromWhere(proj, src, cond) -> *)

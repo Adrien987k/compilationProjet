@@ -1,3 +1,5 @@
+
+
 type expression
 type column
 type columnExtends
@@ -7,6 +9,7 @@ type joinOp
 type condition
 type predicate
 type simple_query
+
 
 val cst_exprAttribute: string -> string -> expression
 val cst_exprPar: expression -> expression
@@ -76,3 +79,7 @@ val cst_squerySelectAllFromWhere: projection -> source -> condition -> simple_qu
 val cst_squerySelectDistinctFromWhere: projection -> source -> condition -> simple_query
 
 val string_of_query: simple_query -> string
+
+val eval_condition: 'a Env.env -> condition -> ('a -> bool)
+val eval_predicate: 'a Env.env -> predicate -> ('a -> bool)
+(* val eval_expression: R.attribute Env.env -> expression -> (R.tuple -> R.value option) *) 
