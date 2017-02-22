@@ -30,7 +30,7 @@ val cst_columnExpr: expression -> column
 val cst_columnExprId: expression -> string -> column
 
 val cst_columnExtendsSingle: column -> columnExtends
-val cst_columnExtendsMany: columnExtends -> columnExtends -> columnExtends
+val cst_columnExtendsMany: column -> columnExtends -> columnExtends
 
 val cst_projAsterisk: projection
 val cst_projColumns: columnExtends -> projection
@@ -74,6 +74,8 @@ val cst_predNull: expression -> predicate
 val cst_predNotNull: expression -> predicate
 
 val cst_squerySelectFrom: projection -> source -> simple_query
+val cst_squerySelectAllFrom: projection -> source -> simple_query
+val cst_squerySelectDistinctFrom: projection -> source -> simple_query
 val cst_squerySelectFromWhere: projection -> source -> condition -> simple_query
 val cst_squerySelectAllFromWhere: projection -> source -> condition -> simple_query
 val cst_squerySelectDistinctFromWhere: projection -> source -> condition -> simple_query

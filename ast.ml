@@ -27,7 +27,7 @@ and column =
 
 and columnExtends =
 	| COLEXTSingle of column
-	| COLEXTMany of columnExtends * columnExtends
+	| COLEXTMany of column * columnExtends
 
 and projection = 
 	| PROJAsterisk
@@ -77,6 +77,8 @@ and predicate =
 
 and simple_query =
 	| SQUERYSelectFrom of projection * source
+	| SQUERYSelectAllFrom of projection * source
+	| SQUERYSelectDistinctFrom of projection * source
 	| SQUERYSelectFromWhere of projection * source * condition
 	| SQUERYSelectAllFromWhere of projection * source * condition
 	| SQUERYSelectDistinctFromWhere of projection * source * condition
@@ -146,6 +148,8 @@ let cst_predNull e = PREDNull(e)
 let cst_predNotNull e = PREDNotNull(e)
 
 let cst_squerySelectFrom p s = SQUERYSelectFrom(p,s)
+let cst_squerySelectAllFrom p s = SQUERYSelectFrom(p,s)
+let cst_squerySelectDistinctFrom p s = SQUERYSelectFrom(p,s)
 let cst_squerySelectFromWhere p s c = SQUERYSelectFromWhere(p,s,c)
 let cst_squerySelectAllFromWhere p s c = SQUERYSelectAllFromWhere(p,s,c)
 let cst_squerySelectDistinctFromWhere p s c = SQUERYSelectDistinctFromWhere(p,s,c)
@@ -153,6 +157,12 @@ let cst_squerySelectDistinctFromWhere p s c = SQUERYSelectDistinctFromWhere(p,s,
 
 let rec string_of_query query = match query with
 	| SQUERYSelectFrom(proj, src) -> Printf.sprintf "SELECT %s\nFROM %s\n\n"
+													   (string_of_projection proj)
+													   (string_of_source src)
+	| SQUERYSelectAllFrom(proj, src) -> Printf.sprintf "SELECT ALL %s\nFROM %s\n\n"
+													   (string_of_projection proj)
+													   (string_of_source src)
+	| SQUERYSelectDistinctFrom(proj, src) -> Printf.sprintf "SELECT DISTINCT %s\nFROM %s\n\n"
 													   (string_of_projection proj)
 													   (string_of_source src)
 	| SQUERYSelectFromWhere(proj, src, cond) -> Printf.sprintf "SELECT %s\nFROM %s\nWHERE %s\n\n"
@@ -183,7 +193,7 @@ and string_of_column column = match column with
 
 and string_of_column_extends col_list = match col_list with
 	| COLEXTSingle(c) -> (string_of_column c)
-	| COLEXTMany(c1,c2) -> (string_of_column_extends c1)^", "^(string_of_column_extends c2)
+	| COLEXTMany(c1,c2) -> (string_of_column c1)^", "^(string_of_column_extends c2)
 
 
 and string_of_expression expr = match expr with

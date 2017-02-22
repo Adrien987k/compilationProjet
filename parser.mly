@@ -43,6 +43,8 @@ ansyn:
 
 query:
 	| SELECT projection FROM source								{ cst_squerySelectFrom $2 $4 }
+	| SELECT ALL projection FROM source							{ cst_squerySelectAllFrom $3 $5 }
+	| SELECT DISTINCT projection FROM source					{ cst_squerySelectDistinctFrom $3 $5 }
 	| SELECT projection FROM source WHERE condition				{ cst_squerySelectFromWhere $2 $4 $6 }
 	| SELECT ALL projection FROM source WHERE condition			{ cst_squerySelectAllFromWhere $3 $5 $7 }
 	| SELECT DISTINCT projection FROM source WHERE condition	{ cst_squerySelectDistinctFromWhere $3 $5 $7 }
@@ -54,14 +56,13 @@ column:
 
 columnExtends:
 	| column 								{ cst_columnExtendsSingle $1 }
-	| columnExtends COMMA columnExtends 	{ cst_columnExtendsMany $1 $3 }
+	| column COMMA columnExtends 	{ cst_columnExtendsMany $1 $3 }
 ;
 
 projection:
 	| ASTERISK			{ cst_projAsterisk }
 	| columnExtends		{ cst_projColumns $1 }
 ;
-
 
 source:
 	| ID 										{ cst_sourId $1 }
