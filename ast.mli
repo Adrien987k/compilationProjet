@@ -82,6 +82,6 @@ val cst_squerySelectDistinctFromWhere: projection -> source -> condition -> simp
 
 val string_of_query: simple_query -> string
 
-val eval_condition: 'a Env.env -> condition -> ('a -> bool)
-val eval_predicate: 'a Env.env -> predicate -> ('a -> bool)
+(*val eval_condition: 'a Env.env -> condition -> ('a -> bool)
+val eval_predicate: 'a Env.env -> predicate -> ('a -> bool) *)
 (* val eval_expression: R.attribute Env.env -> expression -> (R.tuple -> R.value option) *) 

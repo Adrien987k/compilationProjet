@@ -333,18 +333,46 @@ and eval_condition_bool env cond = match cond with
 (*	| CONDIsUnknown(cond1) -> 
 	| CONDIsNotUnknown(cond1) -> *)
 
-and eval_predicate env pred = match pred with 
+and eval_predicate env pred =  
+ (*	let eval_1expr expr1 op = 
+		(fun t -> op
+		(match (eval_expression env expr1) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v1) -> v1))
+	in *)
+	let eval_2expr expr1 expr2 op =
+		(fun t -> op  
+		(match (eval_expression env expr1) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v1) -> v1)
+		(match (eval_expression env expr2) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v2) -> v2))
+	in  
+	let eval_3expr expr1 expr2 expr3 op =
+		(fun t -> op  
+		(match (eval_expression env expr1) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v1) -> v1)
+		(match (eval_expression env expr2) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v2) -> v2)
+		(match (eval_expression env expr3) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v3) -> v3))
+	in
+	match pred with
 	| PREDCond(cond1) -> eval_condition env cond1
-	| PREDEq(_, _)
-	| PREDNeq(_, _) 
-	| PREDLt(_, _) 
-	| PREDLe(_, _) 
-	| PREDGt(_, _) 
-	| PREDGe(_, _)
-	| PREDBetween(_, _, _) 
-	| PREDNotBetween(_, _, _)
-	| PREDNull(_)
-	| PREDNotNull(_) -> (fun t -> eval_predicate_bool env pred)
+	| PREDEq(expr1, expr2) -> eval_2expr expr1 expr2 eq 
+	| PREDNeq(expr1, expr2) -> eval_2expr expr1 expr2 neq 
+	| PREDLt(expr1, expr2) -> eval_2expr expr1 expr2 lt 
+	| PREDLe(expr1, expr2) -> eval_2expr expr1 expr2 le 
+	| PREDGt(expr1, expr2) -> eval_2expr expr1 expr2 gt 
+	| PREDGe(expr1, expr2) -> eval_2expr expr1 expr2 ge
+	| PREDBetween(expr1, expr2, expr3) -> eval_3expr expr1 expr2 expr3 between
+	| PREDNotBetween(expr1, expr2, expr3) ->  eval_3expr expr1 expr2 expr3 not_between
+	| PREDNull(expr1) -> (fun t -> is_null env expr1)
+	| PREDNotNull(expr1) -> (fun t -> is_not_null env expr1)
 
 and eval_predicate_bool env pred = match pred with
 	| PREDCond(cond1) -> eval_condition_bool env cond1 
@@ -418,22 +446,62 @@ let rec eval_source env source =
 						| None -> failwith "Error: unknown source"
 						| Some(a) -> a
 					  end
-	(*)
+	(*
 	| SOURSQuery(squery) -> eval_query squery *)
-	| SOURComma(src1, src2)
+	(*| SOURComma(src1, src2)
 	| SOURCrossJoin(src1, src2) -> join_app src1 src2 R.crossjoin
 	| SOURJoinOn(src1, join, src2, cond) ->
-		let pred  = (fun t1 t2 -> ((eval_condition env cond) t1) && ((eval_condition env cond) t2)) in
+		let att_env = (match env with | (r, g) -> gf) in
+		let pred  = (fun t1 t2 -> ((eval_condition att_env cond) t1) && ((eval_condition att_env cond) t2)) in
 		match join with
 			| INNERJOIN -> join_app_pred pred src1 src2 R.innerjoin 
 			| OUTERLEFT -> join_app_pred pred src1 src2 R.leftouterjoin
-			| OUTERFULL -> join_app_pred pred src1 src2 R.fullouterjoin
+			| OUTERFULL -> join_app_pred pred src1 src2 R.fullouterjoin *)
 			(*
 			| JOIN -> 
 			| OUTERRIGHT -> 
 			| LEFT -> 
 			| RIGHT -> 
 			| FULL -> *) 
+
+let rec eval_projection env proj = match proj with
+(*
+	| PROJAsterisk -> *)
+	| PROJColumns(col_extends) -> eval_column_extends env col_extends
+
+
+and eval_column_extends env col_list = 
+	let rec eval_column_extends_temp env col_list g' res_l nb = 
+		match col_list with
+		| COLEXTSingle(col) -> begin
+								   match col with
+								   | COLExpr(expr) -> 
+								   				(g', res_l @ [(Value.DVChar, eval_expression env expr)])
+								   | COLExprId(expr, s) -> 
+								   				(g' @ (Env.add s nb g'),
+												 res_l @ [(Value.DVChar, eval_expression env expr)])									   							
+							   end
+		| COLEXTMany(col, col_ext) -> 
+			begin
+			match col with
+			| COLExpr(expr) -> 
+					eval_column_extends_temp 
+						env 
+						col_ext 
+						g' 
+						(res_l @ [(Value.DVChar, eval_expression env expr)]) 
+						(nb + 1) 
+			| COLExprId(expr, s) ->
+					eval_column_extends_temp
+						env 
+						col_ext
+						(g' @ (Env.add s nb g'))
+						(res_l @ [(Value.DVChar, eval_expression env expr)])
+						(nb + 1)
+			end
+	in
+	eval_column_extends_temp env col_list Env.empty [] 0
+
 
 
 (*
