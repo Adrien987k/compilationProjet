@@ -308,38 +308,21 @@ let is_unknown env cond = match cond with
 
 let rec eval_condition env cond = match cond with
 	| CONDPred(pred1) -> eval_predicate env pred1
-	| CONDNotCond(_) 
-    | CONDAnd(_, _) 	
-	| CONDOr(_, _) 
-	| CONDIsTrue(_) 
-	| CONDIsNotTrue(_)
-	| CONDIsFalse(_) 
-	| CONDIsNotFalse(_) -> (fun t -> eval_condition_bool env cond)
+	| CONDNotCond(cond1) -> (fun t -> not ((eval_condition env cond1) t))
+    | CONDAnd(cond1, cond2) -> (fun t -> if (eval_condition env cond1) t 
+    									 then (eval_condition env cond2) t
+							   			 else false)
+	| CONDOr(cond1, cond2) -> (fun t -> if (eval_condition env cond1) t then true 
+							  else (eval_condition env cond2) t)
+	| CONDIsTrue(cond1) -> (fun t -> (eval_condition env cond1) t)
+	| CONDIsNotTrue(cond1) -> (fun t -> not ((eval_condition env cond1) t))
+	| CONDIsFalse(cond1) -> (fun t -> not ((eval_condition env cond1) t))
+	| CONDIsNotFalse(cond1) -> (fun t -> (eval_condition env cond1) t)
 	(* 
 	| CONDIsUnknown(cond1) -> 
 	| CONDIsNotUnknown(cond1) -> *)
 
-and eval_condition_bool env cond = match cond with
-	| CONDPred(pred1) -> eval_predicate_bool env pred1
-	| CONDNotCond(cond1) -> not (eval_condition_bool env cond1) 
-	| CONDAnd(cond1, cond2) -> if eval_condition_bool env cond1 then eval_condition_bool env cond2
-							   else false
-	| CONDOr(cond1, cond2) -> if eval_condition_bool env cond1 then true 
-							  else eval_condition_bool env cond2
-	| CONDIsTrue(cond1) -> eval_condition_bool env cond1
-	| CONDIsNotTrue(cond1) -> not (eval_condition_bool env cond1)
-	| CONDIsFalse(cond1) -> not (eval_condition_bool env cond1)
-	| CONDIsNotFalse(cond1) -> (eval_condition_bool env cond1)
-(*	| CONDIsUnknown(cond1) -> 
-	| CONDIsNotUnknown(cond1) -> *)
-
-and eval_predicate env pred =  
- (*	let eval_1expr expr1 op = 
-		(fun t -> op
-		(match (eval_expression env expr1) t with
-		| None -> failwith "Error: Syntax error"
-		| Some(v1) -> v1))
-	in *)
+and eval_predicate env pred =
 	let eval_2expr expr1 expr2 op =
 		(fun t -> op  
 		(match (eval_expression env expr1) t with
@@ -374,61 +357,58 @@ and eval_predicate env pred =
 	| PREDNull(expr1) -> (fun t -> is_null env expr1)
 	| PREDNotNull(expr1) -> (fun t -> is_not_null env expr1)
 
-and eval_predicate_bool env pred = match pred with
-	| PREDCond(cond1) -> eval_condition_bool env cond1 
-	| PREDEq(expr1, expr2) -> eq (eval_expression_value expr1) (eval_expression_value expr2)
-	| PREDNeq(expr1, expr2) -> eq (eval_expression_value expr1) (eval_expression_value expr2)
-	| PREDLt(expr1, expr2) -> lt (eval_expression_value expr1) (eval_expression_value expr2)
-	| PREDLe(expr1, expr2) -> le (eval_expression_value expr1) (eval_expression_value expr2)
-	| PREDGt(expr1, expr2) -> gt (eval_expression_value expr1) (eval_expression_value expr2)
-	| PREDGe(expr1, expr2) -> ge (eval_expression_value expr1) (eval_expression_value expr2)
-	| PREDBetween(expr1, expr2, expr3) -> between (eval_expression_value expr1)
-													(eval_expression_value expr2)
-													(eval_expression_value expr3)
-	| PREDNotBetween(expr1, expr2, expr3) -> not_between (eval_expression_value expr1)
-													     (eval_expression_value expr2)
-													     (eval_expression_value expr3)
-	| PREDNull(expr1) -> is_null env expr1
-	| PREDNotNull(expr1) -> is_not_null env expr1
 
-and eval_expression env expr = match expr with 
-	| EXPRAttribute(str1, str2) ->  let attr1 = Env.find str1 env in
-									let attr2 = Env.find str2 env in
-									(match (attr1,attr2) with
-										| (_,None)  
-										| (None,_) -> failwith ""
-										| (Some(_),Some(a)) -> (fun t -> R.attribute a t)) 
+and eval_expression env expr = 
+	let eval_1expr expr1 op = 
+		(fun t -> Some(op
+		(match (eval_expression env expr1) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v1) -> v1)))
+	in
+	let eval_2expr expr1 expr2 op =
+		(fun t -> Some(op  
+		(match (eval_expression env expr1) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v1) -> v1)
+		(match (eval_expression env expr2) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v2) -> v2)))
+	in  
+	let eval_3expr expr1 expr2 expr3 op =
+		(fun t -> Some(op  
+		(match (eval_expression env expr1) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v1) -> v1)
+		(match (eval_expression env expr2) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v2) -> v2)
+		(match (eval_expression env expr3) t with
+		| None -> failwith "Error: Syntax error"
+		| Some(v3) -> v3)))
+	in
+    match expr with 
+	| EXPRAttribute(str1, str2) -> let attr1 = Env.find str1 env in
+								   let attr2 = Env.find str2 env in
+								   (match (attr1,attr2) with
+									| (_,None)  
+									| (None,_) -> failwith "Error: unbound value"
+									| (Some(_),Some(a)) -> (fun t -> R.attribute a t)) 
 	| EXPRPar(expr1) -> eval_expression env expr1
-	| EXPRInt(_)
-	| EXPRFloat(_)	
-	| EXPRPlus(_, _)
-	| EXPRMinus(_, _) 
-	| EXPRAstrisk(_, _)
-	| EXPRSlash(_, _)
-	| EXPRUMinus(_) 
-	| EXPRString(_) 
-	| EXPRPPipe(_, _) 
-	| EXPRLower(_) 
-	| EXPRUpper(_) 
-	| EXPRSubString(_,_,_) -> (fun t -> Some(eval_expression_value expr))
-
-and eval_expression_value expr = match expr with
-	| EXPRInt(i) -> VInt(i)
-	| EXPRFloat(f) -> VFloat(f)
-	| EXPRString(s) -> VVChar(s)
-	| EXPRPlus(expr1, expr2) -> add (eval_expression_value expr1) (eval_expression_value expr2)
-	| EXPRMinus(expr1, expr2) -> sub (eval_expression_value expr1) (eval_expression_value expr2)
-	| EXPRAstrisk(expr1, expr2) -> mul (eval_expression_value expr1) (eval_expression_value expr2)
-	| EXPRSlash(expr1, expr2) -> div (eval_expression_value expr1) (eval_expression_value expr2)
-	| EXPRUMinus(expr1) -> mul (eval_expression_value expr1) (VInt(-1))
-	| EXPRPPipe(expr1, expr2) -> concat (eval_expression_value expr1 ) (eval_expression_value expr2)
-	| EXPRLower(expr1) -> lower (eval_expression_value expr1)
-	| EXPRUpper(expr1) -> upper (eval_expression_value expr1)
-	| EXPRSubString(expr1, expr2, expr3) -> sub_string (eval_expression_value expr1) (eval_expression_value expr2) (eval_expression_value expr3)
-	| _ -> failwith "eval_expression_value: invalid expression value"
+	| EXPRInt(i) -> (fun t -> Some(VInt(i)))
+	| EXPRFloat(f) -> (fun t -> Some(VFloat(f)))
+	| EXPRString(s) -> (fun t -> Some(VVChar(s)))
+	| EXPRPlus(expr1, expr2) -> eval_2expr expr1 expr2 add
+	| EXPRMinus(expr1, expr2) -> eval_2expr expr1 expr2 sub 
+	| EXPRAstrisk(expr1, expr2) -> eval_2expr expr1 expr2 mul
+	| EXPRSlash(expr1, expr2) -> eval_2expr expr1 expr2 div
+	| EXPRUMinus(expr1) -> eval_2expr expr1 (EXPRInt(-1)) mul 
+	| EXPRPPipe(expr1, expr2)  -> eval_2expr expr1 expr2 concat
+	| EXPRSubString(expr1, expr2, expr3) -> eval_3expr expr1 expr2 expr3 sub_string
+	| EXPRLower(expr1) -> eval_1expr expr1 lower
+	| EXPRUpper(expr1) -> eval_1expr expr1 upper
 
 
-let rec eval_source env source =
+and eval_source env source =
 	let join_app s1 s2 join = 
 		let source1 = eval_source env s1 in
 		let source2 = eval_source env s2 in
@@ -464,7 +444,7 @@ let rec eval_source env source =
 			| RIGHT -> 
 			| FULL -> *) 
 
-let rec eval_projection env proj = match proj with
+and eval_projection env proj = match proj with
 (*
 	| PROJAsterisk -> *)
 	| PROJColumns(col_extends) -> eval_column_extends env col_extends
@@ -505,7 +485,7 @@ and eval_column_extends env col_list =
 
 
 (*
-let rec eval_query env query = match query with
+and eval_query env query = match query with
 	| SQUERYSelectFrom(proj, src) -> 
 	| SQUERYSelectFromWhere(proj, src, cond) -> 
 	| SQUERYSelectAllFromWhere(proj, src, cond) -> 
