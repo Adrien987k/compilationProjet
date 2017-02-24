@@ -444,9 +444,22 @@ and eval_source env source =
 			| RIGHT -> 
 			| FULL -> *) 
 
-and eval_projection env proj = match proj with
-(*
-	| PROJAsterisk -> *)
+and eval_projection env proj =
+	let rec collect_attributes env = 
+		match env with
+		| [] -> []
+		| (s, attrib) :: next -> [COLExpr(EXPRAttribute("", s))] @ (collect_attributes next)
+	in
+	let column_list = collect_attributes env in
+	let rec transform_col_list_in_colExt col_list = 
+		match col_list with
+		| [] -> failwith "Error: No attribute found"
+		| col :: [] -> COLEXTSingle(col)
+		| col :: next -> COLEXTMany(col, transform_col_list_in_colExt next)
+	in
+	let col_extends_calculated_with_env = transform_col_list_in_colExt column_list in
+	match proj with
+	| PROJAsterisk -> eval_column_extends env col_extends_calculated_with_env
 	| PROJColumns(col_extends) -> eval_column_extends env col_extends
 
 
@@ -480,13 +493,43 @@ and eval_column_extends env col_list =
 						(nb + 1)
 			end
 	in
-	eval_column_extends_temp env col_list Env.empty [] 0
+	eval_column_extends_temp env col_list Env.empty [] (0 : R.attribute)
 
 
 
-(*
-and eval_query env query = match query with
-	| SQUERYSelectFrom(proj, src) -> 
-	| SQUERYSelectFromWhere(proj, src, cond) -> 
-	| SQUERYSelectAllFromWhere(proj, src, cond) -> 
-	| SQUERYSelectDistinctFromWhere(proj, src, cond) -> *)
+
+and eval_query env query = 
+	let source_proj proj src =
+		match eval_source env src with
+		| (r, att_env) -> let res_eval_proj = eval_projection att_env proj in
+						  match res_eval_proj with
+						  | (g', proj1) -> (R.projection proj1 r, g')  
+	in
+	let source_proj_cond proj src cond = 
+		match eval_source env src with
+			| (r, att_env) -> let res_eval_cond = eval_condition att_env cond in
+							  let res_eval_proj = eval_projection att_env proj in
+							  begin
+							  match res_eval_proj with
+							  | (g', proj1) -> (
+							  		(R.projection proj1  (R.selection res_eval_cond r)),
+							  				  g'
+							  				  )
+							  end
+	in
+	match query with
+	| SQUERYSelectFrom(proj, src) -> source_proj proj src
+(*			
+	| SQUERYSelectAllFrom(proj, src) -> *)
+	| SQUERYSelectDistinctFrom(proj, src) -> begin
+											 match source_proj proj src with
+											 | (r, att_env) -> (R.distinct(r), att_env)
+											 end 
+	| SQUERYSelectFromWhere(proj, src, cond) -> source_proj_cond proj src cond
+	(*
+	| SQUERYSelectAllFromWhere(proj, src, cond) -> *)
+	| SQUERYSelectDistinctFromWhere(proj, src, cond) -> 
+				begin
+				match source_proj_cond proj src cond with
+				| (r, att_env) -> (R.distinct(r), att_env)
+				end    
