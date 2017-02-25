@@ -426,23 +426,23 @@ and eval_source env source =
 						| None -> failwith "Error: unknown source"
 						| Some(a) -> a
 					  end
-	(*
-	| SOURSQuery(squery) -> eval_query squery *)
-	(*| SOURComma(src1, src2)
+	| SOURSQuery(squery) -> eval_query env squery
+	| SOURComma(src1, src2)
 	| SOURCrossJoin(src1, src2) -> join_app src1 src2 R.crossjoin
+(*
 	| SOURJoinOn(src1, join, src2, cond) ->
 		let att_env = (match env with | (r, g) -> gf) in
 		let pred  = (fun t1 t2 -> ((eval_condition att_env cond) t1) && ((eval_condition att_env cond) t2)) in
 		match join with
+			| JOIN  
 			| INNERJOIN -> join_app_pred pred src1 src2 R.innerjoin 
+			| LEFT 
 			| OUTERLEFT -> join_app_pred pred src1 src2 R.leftouterjoin
-			| OUTERFULL -> join_app_pred pred src1 src2 R.fullouterjoin *)
-			(*
-			| JOIN -> 
-			| OUTERRIGHT -> 
-			| LEFT -> 
-			| RIGHT -> 
-			| FULL -> *) 
+			| FULL 
+			| OUTERFULL -> join_app_pred pred src1 src2 R.fullouterjoin 
+			| RIGHT
+			| OUTERRIGHT ->  join_app_pred pred src2 src1 R.leftouterjoin
+		*) 
 
 and eval_projection env proj =
 	let rec collect_attributes env = 
@@ -518,16 +518,14 @@ and eval_query env query =
 							  end
 	in
 	match query with
-	| SQUERYSelectFrom(proj, src) -> source_proj proj src
-(*			
-	| SQUERYSelectAllFrom(proj, src) -> *)
+	| SQUERYSelectFrom(proj, src)
+	| SQUERYSelectAllFrom(proj, src) -> source_proj proj src
 	| SQUERYSelectDistinctFrom(proj, src) -> begin
 											 match source_proj proj src with
 											 | (r, att_env) -> (R.distinct(r), att_env)
 											 end 
-	| SQUERYSelectFromWhere(proj, src, cond) -> source_proj_cond proj src cond
-	(*
-	| SQUERYSelectAllFromWhere(proj, src, cond) -> *)
+	| SQUERYSelectFromWhere(proj, src, cond)
+	| SQUERYSelectAllFromWhere(proj, src, cond) -> source_proj_cond proj src cond 
 	| SQUERYSelectDistinctFromWhere(proj, src, cond) -> 
 				begin
 				match source_proj_cond proj src cond with
