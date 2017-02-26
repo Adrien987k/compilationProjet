@@ -1,4 +1,5 @@
 
+module R : Relation.S
 
 type expression
 type column
@@ -85,3 +86,4 @@ val string_of_query: simple_query -> string
 (*val eval_condition: 'a Env.env -> condition -> ('a -> bool)
 val eval_predicate: 'a Env.env -> predicate -> ('a -> bool) *)
 (* val eval_expression: 'a Env.env -> expression -> ('b -> 'c) *)
+val eval_query: (R.relation * R.attribute Env.env) Env.env -> simple_query -> (R.relation * R.attribute Env.env)

@@ -66,14 +66,14 @@ rule anlex = parse
     '.'  ['0'-'9']+ ['0'-'9']+ ('e' | 'E' ('-' | '+')? ['0'-'9']+ )?) as lxm
                                           { FLOAT(float_of_string lxm) }
   | ['0'-'9']+ as lxm                     { INT(int_of_string lxm) }
-  | ''' ([^'''] | "''")* ''' as lxm        { STRING(lxm) }
-  | (['a'-'z' 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9']+ |
-    '"'[^'"']*'"' ) as lxm
-                                          { try 
-                                              Hashtbl.find keyword_table lxm
-                                            with Not_found -> ID(lxm)
-                                                               
-                                          }
+  | ''' ([^'''] | "''")* ''' as lxm       { STRING(lxm) }
+  | (['a'-'z' 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9']+) as lxm { try 
+                                                             Hashtbl.find keyword_table lxm
+                                                             with Not_found -> ID(lxm)
+                                                          }
+  |   ('"' (([^'"']*) as lxm) '"' )        { ID(lxm) }
+  
+                                          
   | eof                                   { raise Eof }
   | _ as lxm                              { 
                                              Printf.eprintf "Unknown character '%c': ignored\n" lxm; flush stderr;

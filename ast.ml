@@ -387,12 +387,10 @@ and eval_expression env expr =
 		| Some(v3) -> v3)))
 	in
     match expr with 
-	| EXPRAttribute(str1, str2) -> let attr1 = Env.find str1 env in
-								   let attr2 = Env.find str2 env in
-								   (match (attr1,attr2) with
-									| (_,None)  
-									| (None,_) -> failwith "Error: unbound value"
-									| (Some(_),Some(a)) -> (fun t -> R.attribute a t)) 
+	| EXPRAttribute(str1, str2) -> let attr2 = Env.find str2 env in
+								   (match attr2 with
+									| None -> failwith (Printf.sprintf "Error: unknown attribute : %s" str2)   
+									| Some(a) -> (fun t -> R.attribute a t)) 
 	| EXPRPar(expr1) -> eval_expression env expr1
 	| EXPRInt(i) -> (fun t -> Some(VInt(i)))
 	| EXPRFloat(f) -> (fun t -> Some(VFloat(f)))
@@ -415,34 +413,37 @@ and eval_source env source =
 		match source1, source2 with
 			| ((r1, g1), (r2, g2)) -> (join r1 r2, Env.union g1 g2)
 	in
-	let join_app_pred pred s1 s2 join = 
+	let join_app_cond cond s1 s2 join = 
 		let source1 = eval_source env s1 in
 		let source2 = eval_source env s2 in
 		match source1, source2 with
-			| ((r1, g1), (r2, g2)) -> (join pred r1 r2, Env.union g1 g2)
+			| ((r1, g1), (r2, g2)) ->
+					let att_env = Env.union g1 g2 in 
+					let pred_1tuple = eval_condition att_env cond in
+					let pred_2tuple = (fun t1 t2 -> (pred_1tuple t1) && (pred_1tuple t2)) in
+					(join pred_2tuple r1 r2, att_env)
 	in	
 	match source with
 	| SOURID(str1) -> begin match Env.find str1 env with
-						| None -> failwith "Error: unknown source"
+						| None -> failwith (Printf.sprintf "Error: unknown source : %s" str1)
 						| Some(a) -> a
 					  end
 	| SOURSQuery(squery) -> eval_query env squery
 	| SOURComma(src1, src2)
 	| SOURCrossJoin(src1, src2) -> join_app src1 src2 R.crossjoin
-(*
 	| SOURJoinOn(src1, join, src2, cond) ->
-		let att_env = (match env with | (r, g) -> gf) in
-		let pred  = (fun t1 t2 -> ((eval_condition att_env cond) t1) && ((eval_condition att_env cond) t2)) in
+		begin
 		match join with
 			| JOIN  
-			| INNERJOIN -> join_app_pred pred src1 src2 R.innerjoin 
+			| INNERJOIN -> join_app_cond cond src1 src2 R.innerjoin 
 			| LEFT 
-			| OUTERLEFT -> join_app_pred pred src1 src2 R.leftouterjoin
+			| OUTERLEFT -> join_app_cond cond src1 src2 R.leftouterjoin
 			| FULL 
-			| OUTERFULL -> join_app_pred pred src1 src2 R.fullouterjoin 
+			| OUTERFULL -> join_app_cond cond src1 src2 R.fullouterjoin 
 			| RIGHT
-			| OUTERRIGHT ->  join_app_pred pred src2 src1 R.leftouterjoin
-		*) 
+			| OUTERRIGHT ->  join_app_cond cond src2 src1 R.leftouterjoin
+		end
+
 
 and eval_projection env proj =
 	let rec collect_attributes env = 
@@ -530,4 +531,4 @@ and eval_query env query =
 				begin
 				match source_proj_cond proj src cond with
 				| (r, att_env) -> (R.distinct(r), att_env)
-				end    
+				end 
