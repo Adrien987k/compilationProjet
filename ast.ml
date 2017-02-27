@@ -387,8 +387,9 @@ and eval_expression env expr =
 		| Some(v3) -> v3)))
 	in
     match expr with 
-	| EXPRAttribute(str1, str2) -> let attr2 = Env.find str2 env in
-								   (match attr2 with
+	| EXPRAttribute(str1, str2) -> let attr = str1 ^ "." ^ str2 in
+								   let attr = Env.find attr env in
+								   (match attr with
 									| None -> failwith (Printf.sprintf "Error: unknown attribute : %s" str2)   
 									| Some(a) -> (fun t -> R.attribute a t)) 
 	| EXPRPar(expr1) -> eval_expression env expr1
@@ -407,15 +408,15 @@ and eval_expression env expr =
 
 
 and eval_source env source =
+	let rec rename g name = match g with
+		  | [] -> [] 
+		  | (s, att) :: next -> ((name ^ "." ^ s), att) :: (rename next name)
+	in
+	let find_name r1 g1 = match Env.find_key (r1, g1) env with
+		  | None -> failwith ""
+		  | Some(s) -> s
+	in
 	let prepare_att_envs r1 r2 g1 g2 =
-		let name_r1 = match Env.find_key (r1, g1) env with
-		  | None -> failwith ""
-		  | Some(s) -> s
-		  in
-		let name_r2 = match Env.find_key (r2, g2) env with
-		  | None -> failwith ""
-		  | Some(s) -> s
-		  in
 		let rec count_att g = match g with
 			| [] -> 0
 			| h :: q -> 1 + count_att q
@@ -426,13 +427,6 @@ and eval_source env source =
 		  | (s, att) :: next -> (s, (+) att nb_att_g1) :: (change_att next)
 		  in
 		let g2 = change_att g2 in
-
-		let rec rename g name = match g with
-		  | [] -> [] 
-		  | (s, att) :: next -> ((name ^ "." ^ s), att) :: (rename next name)
-		in
-		let g1 = rename g1 name_r1 in
-		let g2 = rename g2 name_r2 in
 		(g1, g2)
 	in
 	let join_app s1 s2 join = 
@@ -456,7 +450,11 @@ and eval_source env source =
 	match source with
 	| SOURID(str1) -> begin match Env.find str1 env with
 						| None -> failwith (Printf.sprintf "Error: unknown source : %s" str1)
-						| Some(a) -> a
+						| Some(elem) -> begin
+										match elem with
+										| (r, att_env) -> let name = find_name r att_env in 
+														  (r, rename att_env name)
+										end
 					  end
 	| SOURSQuery(squery) -> eval_query env squery
 	| SOURComma(src1, src2)
@@ -479,7 +477,11 @@ and eval_projection env proj =
 	let rec collect_attributes env = 
 		match env with
 		| [] -> []
-		| (s, attrib) :: next -> [COLExpr(EXPRAttribute("", s))] @ (collect_attributes next)
+		| (s, attrib) :: next -> let split = String.split_on_char '.' s in
+								 match split with
+								 | table :: att :: [] ->
+					             [COLExpr(EXPRAttribute(table, att))] @ (collect_attributes next)
+					             | _ -> failwith (Printf.sprintf "Error: invalide attribute")
 	in
 	let column_list = collect_attributes env in
 	let rec transform_col_list_in_colExt col_list = 

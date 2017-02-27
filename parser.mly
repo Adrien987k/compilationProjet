@@ -70,13 +70,13 @@ source:
 	| source COMMA source						{ cst_sourComma $1 $3 }
 	| source CROSS JOIN source					{ cst_sourCrossJoin $1 $4 }
 	| source JOIN source ON condition 			{ cst_sourJoinOn $1 (cst_join) $3 $5 }
-	| source INNER JOIN source ON condition		{ cst_sourJoinOn $1 (cst_innerjoin) $4 $6}
-	| source RIGHT source ON condition			{ cst_sourJoinOn $1 (cst_right) $3 $5 }
-	| source LEFT source ON condition			{ cst_sourJoinOn $1 (cst_left) $3 $5 }
-	| source FULL source ON condition			{ cst_sourJoinOn $1 (cst_full) $3 $5 }
-	| source OUTER RIGHT source ON condition	{ cst_sourJoinOn $1 (cst_outerright) $4 $6}
-	| source OUTER LEFT source ON condition		{ cst_sourJoinOn $1 (cst_outerleft) $4 $6}
-	| source OUTER FULL source ON condition		{ cst_sourJoinOn $1 (cst_outerfull) $4 $6}
+	| source INNER JOIN source ON condition		{ cst_sourJoinOn $1 (cst_innerjoin) $4 $6 }
+	| source RIGHT JOIN source ON condition			{ cst_sourJoinOn $1 (cst_right) $4 $6 }
+	| source LEFT JOIN source ON condition			{ cst_sourJoinOn $1 (cst_left) $4 $6 }
+	| source FULL JOIN source ON condition			{ cst_sourJoinOn $1 (cst_full) $4 $6 }
+	| source RIGHT OUTER JOIN source ON condition	{ cst_sourJoinOn $1 (cst_outerright) $5 $7 }
+	| source LEFT OUTER JOIN source ON condition		{ cst_sourJoinOn $1 (cst_outerleft) $5 $7 }
+	| source FULL OUTER JOIN source ON condition		{ cst_sourJoinOn $1 (cst_outerfull) $5 $7 }
 ;
 
 condition:

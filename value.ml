@@ -108,8 +108,8 @@ let app_string s1 f e =
   | _ -> failwith (Printf.sprintf "Value: concat: type error: %s %s" e (string_of_value s1))
 
 
-let lower s = app_string s String.lowercase ("LOWER")
-let upper s = app_string s String.uppercase ("UPPER")
+let lower s = app_string s String.lowercase_ascii ("LOWER")
+let upper s = app_string s String.uppercase_ascii ("UPPER")
 
 let sub_string s i1 i2 =
   match (s,i1,i2) with
