@@ -52,7 +52,7 @@ query:
 
 column:
 	| expression			{ cst_columnExpr $1 }
-	| expression STRING		{ cst_columnExprId $1 $2 }
+	| expression AS ID		{ cst_columnExprId $1 $3 }
 
 columnExtends:
 	| column 								{ cst_columnExtendsSingle $1 }
