@@ -4,3 +4,4 @@ SELECT * FROM vin WHERE vin.Millésime > 2000 ;;
 
 SELECT * FROM vin, client ;;
 
+SELECT * FROM vin RIGHT OUTER JOIN viticulteur ;;

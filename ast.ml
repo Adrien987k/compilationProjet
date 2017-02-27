@@ -407,17 +407,47 @@ and eval_expression env expr =
 
 
 and eval_source env source =
+	let prepare_att_envs r1 r2 g1 g2 =
+		let name_r1 = match Env.find_key (r1, g1) env with
+		  | None -> failwith ""
+		  | Some(s) -> s
+		  in
+		let name_r2 = match Env.find_key (r2, g2) env with
+		  | None -> failwith ""
+		  | Some(s) -> s
+		  in
+		let rec count_att g = match g with
+			| [] -> 0
+			| h :: q -> 1 + count_att q
+		  in 
+		let nb_att_g1 = count_att g1 in
+		let rec change_att g = match g with
+		  | [] -> []
+		  | (s, att) :: next -> (s, (+) att nb_att_g1) :: (change_att next)
+		  in
+		let g2 = change_att g2 in
+
+		let rec rename g name = match g with
+		  | [] -> [] 
+		  | (s, att) :: next -> ((name ^ "." ^ s), att) :: (rename next name)
+		in
+		let g1 = rename g1 name_r1 in
+		let g2 = rename g2 name_r2 in
+		(g1, g2)
+	in
 	let join_app s1 s2 join = 
 		let source1 = eval_source env s1 in
 		let source2 = eval_source env s2 in
 		match source1, source2 with
-			| ((r1, g1), (r2, g2)) -> (join r1 r2, Env.union g1 g2)
+			| ((r1, g1), (r2, g2)) -> let g1, g2 = prepare_att_envs r1 r2 g1 g2 in
+									  (join r1 r2, Env.union g1 g2)
 	in
 	let join_app_cond cond s1 s2 join = 
 		let source1 = eval_source env s1 in
 		let source2 = eval_source env s2 in
 		match source1, source2 with
 			| ((r1, g1), (r2, g2)) ->
+					let g1, g2 = prepare_att_envs r1 r2 g1 g2 in
 					let att_env = Env.union g1 g2 in 
 					let pred_1tuple = eval_condition att_env cond in
 					let pred_2tuple = (fun t1 t2 -> (pred_1tuple t1) && (pred_1tuple t2)) in

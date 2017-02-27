@@ -6,6 +6,11 @@ let rec find k env = match env with
   | [] -> None
   | (k',v) :: _ when k' = k -> Some v
   | _ :: env' -> find k env'
+
+let rec find_key (v: 'a) (env: 'a env) = match env with
+  | [] -> None
+  | (k, v') :: _ when v = v' -> Some k
+  | _ :: env' -> find_key v env'
  
 let rec add k v env = match env with
   | [] -> (k,v) :: env
