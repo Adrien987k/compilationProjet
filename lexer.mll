@@ -67,7 +67,8 @@ rule anlex = parse
                                           { FLOAT(float_of_string lxm) }
   | ['0'-'9']+ as lxm                     { INT(int_of_string lxm) }
   | ''' ([^'''] | "''")* ''' as lxm       { STRING(lxm) }
-  | (['a'-'z' 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '\138' '\136' '\130' '\133' '\135']+) as lxm { try 
+  | (['a'-'z' 'A'-'Z'] ((['a'-'z' 'A'-'Z' '0'-'9' '\136' '\130' '\133' '\135']) | "é"
+                                  | "à" | "ç" | "è")+ ) as lxm { try 
                                                              Hashtbl.find keyword_table lxm
                                                              with Not_found -> ID(lxm)
                                                           }

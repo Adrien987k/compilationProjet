@@ -2,3 +2,5 @@ SELECT * FROM vin ;;
 SELECT vin.NVin, vin.Cru FROM vin ;;
 SELECT * FROM vin WHERE vin.Millésime > 2000 ;;
 
+SELECT * FROM vin, client ;;
+
