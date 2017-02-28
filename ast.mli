@@ -10,6 +10,8 @@ type joinOp
 type condition
 type predicate
 type simple_query
+type whenExprThen
+type whenCondThen
 
 
 val cst_exprAttribute: string -> string -> expression
@@ -26,6 +28,16 @@ val cst_exprPPipe: expression -> expression -> expression
 val cst_exprLower: expression -> expression
 val cst_exprUpper: expression -> expression
 val cst_exprSubString: expression -> expression -> expression -> expression
+
+val cst_exprCaseExpr: expression -> whenExprThen -> expression
+val cst_exprCaseExprElse: expression -> whenExprThen -> expression -> expression
+val cst_exprCaseCond: whenCondThen -> expression
+val cst_exprCaseCondElse: whenCondThen -> expression -> expression
+
+val cst_whenExprThen: expression -> expression -> whenExprThen
+val cst_whenExprThenExtends: expression -> expression -> whenExprThen -> whenExprThen
+val cst_whenCondThen: condition -> expression -> whenCondThen
+val cst_whenCondThenExtends: condition -> expression -> whenCondThen -> whenCondThen
 
 val cst_columnExpr: expression -> column
 val cst_columnExprId: expression -> string -> column

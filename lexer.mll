@@ -35,6 +35,11 @@ let _ =
                 "UNKNOWN", UNKNOWN;
                 "UPPER", UPPER;
                 "WHERE", WHERE;
+                "CASE", CASE;
+                "WHEN", WHEN;
+                "THEN", THEN;
+                "ELSE", ELSE;
+                "END", END;
              ]
 
 }

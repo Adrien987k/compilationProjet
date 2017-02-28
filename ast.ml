@@ -19,7 +19,18 @@ type expression =
 	| EXPRLower of expression
 	| EXPRUpper of expression
 	| EXPRSubString of expression * expression * expression
+	| EXPRCaseExpr of expression * whenExprThen
+	| EXPRCaseExprElse of expression * whenExprThen * expression
+	| EXPRCaseCond of whenCondThen
+	| EXPRCaseCondElse of whenCondThen * expression
 
+and whenExprThen = 
+	| WHENExprThen of expression * expression
+	| WHENExprThenExtends of expression * expression * whenExprThen
+
+and whenCondThen = 
+	| WHENCondThen of condition * expression
+	| WHENCondThenExtends of condition * expression * whenCondThen
 
 and column =
 	| COLExpr of expression
@@ -99,6 +110,16 @@ let cst_exprPPipe e1 e2 = EXPRPPipe(e1,e2)
 let cst_exprLower e = EXPRLower(e)
 let cst_exprUpper e = EXPRUpper(e)
 let cst_exprSubString e1 e2 e3 = EXPRSubString(e1,e2,e3)
+
+let cst_exprCaseExpr e wet = EXPRCaseExpr(e, wet)
+let cst_exprCaseExprElse e1 wet e2 = EXPRCaseExprElse(e1, wet, e2)
+let cst_exprCaseCond wct = EXPRCaseCond(wct)
+let cst_exprCaseCondElse wct e = EXPRCaseCondElse(wct, e)
+
+let cst_whenExprThen e1 e2 = WHENExprThen(e1, e2)
+let cst_whenExprThenExtends e1 e2 wet = WHENExprThenExtends(e1, e2, wet)
+let cst_whenCondThen c e = WHENCondThen(c, e)
+let cst_whenCondThenExtends c e wct = WHENCondThenExtends(c, e, wct)
 
 let cst_columnExpr e = COLExpr(e)
 let cst_columnExprId e s = COLExprId(e,s)
@@ -219,6 +240,35 @@ and string_of_expression expr = match expr with
 														   (string_of_expression expr1)
 														   (string_of_expression expr2)
 														   (string_of_expression expr3)
+	| EXPRCaseExpr(expr1, wet) -> Printf.sprintf "CASE %s %s END" 
+														(string_of_expression expr1)
+													    (string_of_whenExprThen wet)
+	| EXPRCaseExprElse(expr1, wet, expr2) -> Printf.sprintf "CASE %s %s ELSE %s END" 
+														(string_of_expression expr1)
+													    (string_of_whenExprThen wet)
+													    (string_of_expression expr2)
+	| EXPRCaseCond(wct) -> Printf.sprintf "CASE %s END" (string_of_whenCondThen wct)
+	| EXPRCaseCondElse(wct, expr1) -> Printf.sprintf "CASE %s ELSE %s END" 
+													    (string_of_whenCondThen wct)
+														(string_of_expression expr1)  														   
+
+and string_of_whenExprThen wet = match wet with
+	| WHENExprThen(expr1, expr2) -> Printf.sprintf "WHEN %s THEN %s" 
+												(string_of_expression expr1)
+												(string_of_expression expr2)
+	| WHENExprThenExtends(expr1, expr2, wet') -> Printf.sprintf "WHEN %s THEN %s %s" 
+												(string_of_expression expr1)
+												(string_of_expression expr2)
+												(string_of_whenExprThen wet')
+
+and string_of_whenCondThen wct = match wct with
+	| WHENCondThen(cond1, expr1) -> Printf.sprintf "WHEN %s THEN %s" 
+												(string_of_condition cond1)
+												(string_of_expression expr1)
+	| WHENCondThenExtends(cond1, expr1, wct') ->  Printf.sprintf "WHEN %s THEN %s %s" 
+												(string_of_condition cond1)
+												(string_of_expression expr1)
+												(string_of_whenCondThen wct')
 
 and string_of_source source = match source with
 	| SOURID(str1) -> str1
@@ -288,7 +338,48 @@ and string_of_predicate pred = match pred with
 													(string_of_expression expr1)
 
 
-
+let rec domain_of_expression expr = match expr with
+	| EXPRAttribute(_, _) -> DVChar
+	| EXPRPar(expr1) -> domain_of_expression expr1
+	| EXPRInt(_) -> DInt
+	| EXPRFloat(_) -> DFloat
+	| EXPRPlus(expr1, expr2) 
+	| EXPRMinus(expr1, expr2) 
+	| EXPRAstrisk(expr1, expr2)
+	| EXPRSlash(expr1, expr2) -> begin
+								 match (domain_of_expression expr1, domain_of_expression expr2) with
+								 | (DInt, DInt) -> DInt
+								 | (DInt, DFloat) -> DFloat
+								 | (DFloat, DInt) -> DFloat
+								 | (DFloat, DFloat) -> DFloat
+								 | _ -> failwith ""
+							     end 
+	| EXPRUMinus(expr1) -> begin
+						   match (domain_of_expression expr1) with
+						   | DInt -> DInt
+						   | DFloat -> DFloat
+						   | DVChar -> failwith ""
+						   end
+	| EXPRString(_) -> DVChar
+	| EXPRPPipe(expr1, expr2) -> begin
+								 match (domain_of_expression expr1, domain_of_expression expr2) with
+								 | (DVChar, _) -> DVChar
+								 | _ -> failwith ""
+								 end
+	| EXPRLower(expr1)
+	| EXPRUpper(expr1) -> (match domain_of_expression expr1 with | DVChar -> DVChar | _ -> failwith "")
+	| EXPRSubString(expr1, expr2, expr3) -> begin 
+											match (domain_of_expression expr1,
+											       domain_of_expression expr2,
+											       domain_of_expression expr3) with
+											| (DVChar, DInt, DInt) -> DVChar
+											| _ -> failwith ""
+											end 
+	(*
+	| EXPRCaseExpr(expr1, wet) -> 
+	| EXPRCaseExprElse(expr1, wet, expr2) -> 
+	| EXPRCaseCond(wct) -> 
+	| EXPRCaseCondElse(wct, expr1) ->  *)
 
 let is_null env expr = match expr with
 	| EXPRAttribute(str1, str2) -> let attr1 = Env.find str1 env in
@@ -401,11 +492,35 @@ and eval_expression env expr =
 	| EXPRAstrisk(expr1, expr2) -> eval_2expr expr1 expr2 mul
 	| EXPRSlash(expr1, expr2) -> eval_2expr expr1 expr2 div
 	| EXPRUMinus(expr1) -> eval_2expr expr1 (EXPRInt(-1)) mul 
-	| EXPRPPipe(expr1, expr2)  -> eval_2expr expr1 expr2 concat
-	| EXPRSubString(expr1, expr2, expr3) -> eval_3expr expr1 expr2 expr3 sub_string
-	| EXPRLower(expr1) -> eval_1expr expr1 lower
-	| EXPRUpper(expr1) -> eval_1expr expr1 upper
+	| EXPRPPipe(expr1, expr2)  -> eval_2expr expr1 expr2 concat 
+	| EXPRSubString(expr1, expr2, expr3) -> eval_3expr expr1 expr2 expr3 sub_string 
+	| EXPRLower(expr1) -> eval_1expr expr1 lower 
+	| EXPRUpper(expr1) -> eval_1expr expr1 upper 
+	| EXPRCaseExpr(expr1, wet) -> begin
+									match eval_whenExprThen expr1 wet with
+									| None -> failwith "Error: case nether match"
+									| Some(expr') -> eval_1expr expr' (fun x -> x)
+								  end
+	| EXPRCaseExprElse(expr1, wet, expr2) -> begin
+											 match eval_whenExprThen expr1 wet with
+											 | None -> eval_1expr expr2 (fun x -> x)
+											 | Some(expr') -> eval_1expr expr' (fun x -> x)
+											 end
+(*	
+	| EXPRCaseCond(wct) -> 
+	| EXPRCaseCondElse(wct, expr1) -> 
+*)
 
+and eval_whenExprThen expr wet = match wet with
+	| WHENExprThen(expr1, expr2) -> if expr = expr1 then Some(expr2) else None  
+	| WHENExprThenExtends(expr1, expr2, wet') -> if expr = expr1 
+												 then Some(expr2)
+												 else eval_whenExprThen expr wet'
+
+(*
+and eval_whenCondExpr wct = match wct with
+	| WHENCondThen(cond1, expr1) -> (eval_condition env cond1)
+	| WHENCondTHenExtends(cond1, expr1, wct') -> *)
 
 and eval_source env source =
 	let rec rename g name = match g with
@@ -502,10 +617,10 @@ and eval_column_extends env col_list =
 		| COLEXTSingle(col) -> begin
 								   match col with
 								   | COLExpr(expr) -> 
-								   				(g', res_l @ [(Value.DVChar, eval_expression env expr)])
+								   				(g', res_l @ [(domain_of_expression expr, eval_expression env expr)])
 								   | COLExprId(expr, s) -> 
 								   				(g' @ (Env.add s nb g'),
-												 res_l @ [(Value.DVChar, eval_expression env expr)])									   							
+												 res_l @ [(domain_of_expression expr, eval_expression env expr)])									   							
 							   end
 		| COLEXTMany(col, col_ext) -> 
 			begin
@@ -515,14 +630,14 @@ and eval_column_extends env col_list =
 						env 
 						col_ext 
 						g' 
-						(res_l @ [(Value.DVChar, eval_expression env expr)]) 
+						(res_l @ [(domain_of_expression expr, eval_expression env expr)]) 
 						(nb + 1) 
 			| COLExprId(expr, s) ->
 					eval_column_extends_temp
 						env 
 						col_ext
 						(g' @ (Env.add s nb g'))
-						(res_l @ [(Value.DVChar, eval_expression env expr)])
+						(res_l @ [(domain_of_expression expr, eval_expression env expr)])
 						(nb + 1)
 			end
 	in

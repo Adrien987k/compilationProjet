@@ -15,7 +15,7 @@
 %token ALL AND AS BETWEEN BY CROSS DISTINCT FALSE FOR
 		FROM FULL GROUP HAVING INNER IS JOIN LEFT LOWER
 		NOT NULL ON OR OUTER RIGHT SELECT SUBSTRING TRUE UNKNOWN
-		UPPER WHERE 
+		UPPER WHERE CASE WHEN THEN ELSE END 
 %token PC
 /* Priorities and associativity */
 
@@ -121,4 +121,18 @@ expression:
 	| LOWER LPAR expression RPAR 									{ cst_exprLower $3 }
 	| UPPER LPAR expression RPAR 									{ cst_exprUpper $3 }
 	| SUBSTRING LPAR expression FROM expression FOR expression RPAR { cst_exprSubString $3 $5 $7}
+	| CASE expression when_expr_then END                            { cst_exprCaseExpr $2 $3 }
+	| CASE expression when_expr_then ELSE expression END 			{ cst_exprCaseExprElse $2 $3 $5 }
+	| CASE when_cond_then END                                       { cst_exprCaseCond $2 }
+	| CASE when_cond_then ELSE expression END                       { cst_exprCaseCondElse $2 $4 }
+;
+
+when_expr_then:
+	| WHEN expression THEN expression						{ cst_whenExprThen $2 $4 }
+	| WHEN expression THEN expression when_expr_then        { cst_whenExprThenExtends $2 $4 $5 }
+;
+
+when_cond_then:
+	| WHEN condition THEN expression                        { cst_whenCondThen $2 $4 }
+	| WHEN condition THEN expression when_cond_then         { cst_whenCondThenExtends $2 $4 $5 }
 ;
