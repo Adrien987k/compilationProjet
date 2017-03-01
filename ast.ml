@@ -338,16 +338,22 @@ and string_of_predicate pred = match pred with
 													(string_of_expression expr1)
 
 
-let rec domain_of_expression expr = match expr with
-	| EXPRAttribute(_, _) -> DVChar
-	| EXPRPar(expr1) -> domain_of_expression expr1
+let rec domain_of_expression r att_env expr = match expr with
+	| EXPRAttribute(str1, str2) ->  let attr = str1 ^ "." ^ str2 in
+									begin
+						   			match Env.find attr att_env with
+						   			| Some(attr') -> R.domain r attr'
+						   			| None -> failwith (Printf.sprintf "Error: unknown attribute : %s"
+						   							    attr)
+						   		    end
+	| EXPRPar(expr1) -> domain_of_expression r att_env expr1
 	| EXPRInt(_) -> DInt
 	| EXPRFloat(_) -> DFloat
 	| EXPRPlus(expr1, expr2) 
 	| EXPRMinus(expr1, expr2) 
 	| EXPRAstrisk(expr1, expr2)
 	| EXPRSlash(expr1, expr2) -> begin
-								 match (domain_of_expression expr1, domain_of_expression expr2) with
+								 match (domain_of_expression r att_env expr1, domain_of_expression r att_env expr2) with
 								 | (DInt, DInt) -> DInt
 								 | (DInt, DFloat) -> DFloat
 								 | (DFloat, DInt) -> DFloat
@@ -355,23 +361,23 @@ let rec domain_of_expression expr = match expr with
 								 | _ -> failwith ""
 							     end 
 	| EXPRUMinus(expr1) -> begin
-						   match (domain_of_expression expr1) with
+						   match (domain_of_expression r att_env expr1) with
 						   | DInt -> DInt
 						   | DFloat -> DFloat
 						   | DVChar -> failwith ""
 						   end
 	| EXPRString(_) -> DVChar
 	| EXPRPPipe(expr1, expr2) -> begin
-								 match (domain_of_expression expr1, domain_of_expression expr2) with
+								 match (domain_of_expression r att_env expr1, domain_of_expression r att_env expr2) with
 								 | (DVChar, _) -> DVChar
 								 | _ -> failwith ""
 								 end
 	| EXPRLower(expr1)
-	| EXPRUpper(expr1) -> (match domain_of_expression expr1 with | DVChar -> DVChar | _ -> failwith "")
+	| EXPRUpper(expr1) -> (match domain_of_expression r att_env expr1 with | DVChar -> DVChar | _ -> failwith "")
 	| EXPRSubString(expr1, expr2, expr3) -> begin 
-											match (domain_of_expression expr1,
-											       domain_of_expression expr2,
-											       domain_of_expression expr3) with
+											match (domain_of_expression r att_env expr1,
+											       domain_of_expression r att_env expr2,
+											       domain_of_expression r att_env expr3) with
 											| (DVChar, DInt, DInt) -> DVChar
 											| _ -> failwith ""
 											end 
@@ -522,12 +528,12 @@ and eval_whenCondExpr wct = match wct with
 	| WHENCondThen(cond1, expr1) -> (eval_condition env cond1)
 	| WHENCondTHenExtends(cond1, expr1, wct') -> *)
 
-and eval_source env source =
+and eval_source r_env source =
 	let rec rename g name = match g with
 		  | [] -> [] 
 		  | (s, att) :: next -> ((name ^ "." ^ s), att) :: (rename next name)
 	in
-	let find_name r1 g1 = match Env.find_key (r1, g1) env with
+	let find_name r1 g1 = match Env.find_key (r1, g1) r_env with
 		  | None -> failwith ""
 		  | Some(s) -> s
 	in
@@ -545,15 +551,15 @@ and eval_source env source =
 		(g1, g2)
 	in
 	let join_app s1 s2 join = 
-		let source1 = eval_source env s1 in
-		let source2 = eval_source env s2 in
+		let source1 = eval_source r_env s1 in
+		let source2 = eval_source r_env s2 in
 		match source1, source2 with
 			| ((r1, g1), (r2, g2)) -> let g1, g2 = prepare_att_envs r1 r2 g1 g2 in
 									  (join r1 r2, Env.union g1 g2)
 	in
 	let join_app_cond cond s1 s2 join = 
-		let source1 = eval_source env s1 in
-		let source2 = eval_source env s2 in
+		let source1 = eval_source r_env s1 in
+		let source2 = eval_source r_env s2 in
 		match source1, source2 with
 			| ((r1, g1), (r2, g2)) ->
 					let g1, g2 = prepare_att_envs r1 r2 g1 g2 in
@@ -563,15 +569,14 @@ and eval_source env source =
 					(join pred_2tuple r1 r2, att_env)
 	in	
 	match source with
-	| SOURID(str1) -> begin match Env.find str1 env with
+	| SOURID(str1) -> begin match Env.find str1 r_env with
 						| None -> failwith (Printf.sprintf "Error: unknown source : %s" str1)
 						| Some(elem) -> begin
 										match elem with
-										| (r, att_env) -> let name = find_name r att_env in 
-														  (r, rename att_env name)
+										| (r, att_env) -> (r, rename att_env str1)
 										end
 					  end
-	| SOURSQuery(squery) -> eval_query env squery
+	| SOURSQuery(squery) -> eval_query r_env squery
 	| SOURComma(src1, src2)
 	| SOURCrossJoin(src1, src2) -> join_app src1 src2 R.crossjoin
 	| SOURJoinOn(src1, join, src2, cond) ->
@@ -588,9 +593,9 @@ and eval_source env source =
 		end
 
 
-and eval_projection env proj =
-	let rec collect_attributes env = 
-		match env with
+and eval_projection r att_env proj =
+	let rec collect_attributes att_env = 
+		match att_env with
 		| [] -> []
 		| (s, attrib) :: next -> let split = String.split_on_char '.' s in
 								 match split with
@@ -598,7 +603,7 @@ and eval_projection env proj =
 					             [COLExpr(EXPRAttribute(table, att))] @ (collect_attributes next)
 					             | _ -> failwith (Printf.sprintf "Error: invalide attribute")
 	in
-	let column_list = collect_attributes env in
+	let column_list = collect_attributes att_env in
 	let rec transform_col_list_in_colExt col_list = 
 		match col_list with
 		| [] -> failwith "Error: No attribute found"
@@ -607,56 +612,56 @@ and eval_projection env proj =
 	in
 	let col_extends_calculated_with_env = transform_col_list_in_colExt column_list in
 	match proj with
-	| PROJAsterisk -> eval_column_extends env col_extends_calculated_with_env
-	| PROJColumns(col_extends) -> eval_column_extends env col_extends
+	| PROJAsterisk -> eval_column_extends r att_env col_extends_calculated_with_env
+	| PROJColumns(col_extends) -> eval_column_extends r att_env col_extends
 
 
-and eval_column_extends env col_list = 
-	let rec eval_column_extends_temp env col_list g' res_l nb = 
+and eval_column_extends r att_env col_list = 
+	let rec eval_column_extends_temp att_env col_list g' res_l nb = 
 		match col_list with
 		| COLEXTSingle(col) -> begin
 								   match col with
 								   | COLExpr(expr) -> 
-								   				(g', res_l @ [(domain_of_expression expr, eval_expression env expr)])
+								   				(g', res_l @ [(domain_of_expression r att_env expr, eval_expression att_env expr)])
 								   | COLExprId(expr, s) -> 
 								   				(g' @ (Env.add s nb g'),
-												 res_l @ [(domain_of_expression expr, eval_expression env expr)])									   							
+												 res_l @ [(domain_of_expression r att_env expr, eval_expression att_env expr)])									   							
 							   end
 		| COLEXTMany(col, col_ext) -> 
 			begin
 			match col with
 			| COLExpr(expr) -> 
 					eval_column_extends_temp 
-						env 
+						att_env 
 						col_ext 
 						g' 
-						(res_l @ [(domain_of_expression expr, eval_expression env expr)]) 
+						(res_l @ [(domain_of_expression r att_env expr, eval_expression att_env expr)]) 
 						(nb + 1) 
 			| COLExprId(expr, s) ->
 					eval_column_extends_temp
-						env 
+						att_env 
 						col_ext
 						(g' @ (Env.add s nb g'))
-						(res_l @ [(domain_of_expression expr, eval_expression env expr)])
+						(res_l @ [(domain_of_expression r att_env expr, eval_expression att_env expr)])
 						(nb + 1)
 			end
 	in
-	eval_column_extends_temp env col_list Env.empty [] (0 : R.attribute)
+	eval_column_extends_temp att_env col_list Env.empty [] (0 : R.attribute)
 
 
 
 
-and eval_query env query = 
+and eval_query r_env query = 
 	let source_proj proj src =
-		match eval_source env src with
-		| (r, att_env) -> let res_eval_proj = eval_projection att_env proj in
+		match eval_source r_env src with
+		| (r, att_env) -> let res_eval_proj = eval_projection r att_env proj in
 						  match res_eval_proj with
 						  | (g', proj1) -> (R.projection proj1 r, g')  
 	in
 	let source_proj_cond proj src cond = 
-		match eval_source env src with
+		match eval_source r_env src with
 			| (r, att_env) -> let res_eval_cond = eval_condition att_env cond in
-							  let res_eval_proj = eval_projection att_env proj in
+							  let res_eval_proj = eval_projection r att_env proj in
 							  begin
 							  match res_eval_proj with
 							  | (g', proj1) -> (
