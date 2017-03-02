@@ -4,18 +4,21 @@
  * en argument de Relation.Make
  *)
 
-
 (* Définition des types relatant des domaines et des valeurs atomiques manipulables *)
+
+open Sqldate
 
 type domain =
   | DInt
   | DFloat
   | DVChar
+  | DDate
 
 type value =
   | VInt   of int
   | VFloat of float
   | VVChar of string
+  | VDate of date
 
 (* Fonctions de conversion entre chaînes de caractères et valeurs/domaines (utilisées dans l'import/export des CSV) *)
 
@@ -24,6 +27,7 @@ let domain_of_string s =
   | "INT" -> DInt
   | "FLOAT" -> DFloat
   | "VARCHAR" -> DVChar
+  | "DATE" -> DDate
   | _ -> failwith (Printf.sprintf "Value: domain_of_string: unknown domain: '%s'" s)
 
 let string_of_domain d =
@@ -31,18 +35,21 @@ let string_of_domain d =
   | DInt -> "INT"
   | DFloat -> "FLOAT"
   | DVChar -> "VARCHAR"
+  | DDate -> "DATE"
 
 let value_of_string d =
   match d with
   | DInt -> (fun s -> VInt (int_of_string s))
   | DFloat -> (fun s -> VFloat (float_of_string s))
   | DVChar -> (fun s -> VVChar s)
+  | DDate -> (fun s -> VDate(date_of_string s))
 
 let string_of_value v =
   match v with
   | VInt i -> string_of_int i
   | VFloat f -> string_of_float f
   | VVChar s -> s
+  | VDate d -> string_of_date d
 
 (* Fonctions de conversion et de vérification d'appartenance d'une valeur à un domaine *)
 
@@ -51,12 +58,14 @@ let domain_of_value v =
   | VInt _ -> DInt
   | VFloat _ -> DFloat
   | VVChar _ -> DVChar
+  | VDate _ -> DDate
 
 let domain d v =
   match d, v with
   | DInt, VInt _
   | DFloat, VFloat _
-  | DVChar, VVChar _ -> true
+  | DVChar, VVChar _
+  | DDate, VDate _ -> true
   | _ -> false
 
 let to_domain d =
@@ -64,23 +73,32 @@ let to_domain d =
   | DInt -> (function
     | VInt i -> VInt i
     | VFloat f -> VInt (int_of_float f)
-    | VVChar s -> try VInt (int_of_string s) with Failure _ -> VInt 0
+    | VVChar s -> (try VInt (int_of_string s) with Failure _ -> VInt 0)
+    | VDate d -> failwith "Cannot convert DATE to INT"
   )
   | DFloat -> (function
     | VInt i -> VFloat (float_of_int i)
     | VFloat f -> VFloat f
-    | VVChar s -> try VFloat (float_of_string s) with Failure _ -> VFloat 0.
+    | VVChar s -> (try VFloat (float_of_string s) with Failure _ -> VFloat 0.)
+    | VDate _ -> failwith "Cannot convert DATE to FLOAT"
   )
   | DVChar -> (function
     | VInt i -> VVChar (string_of_int i)
     | VFloat f -> VVChar (string_of_float f)
     | VVChar s -> VVChar s
+    | VDate d -> VVChar(string_of_date d)
+  )
+  | DDate -> (function
+    | VInt _ -> failwith "Cannot convert INT to DATE"
+    | VFloat _ -> failwith "Cannot convert FLOAT to DATE"
+    | VVChar s -> VDate(date_of_string s)
+    | VDate d -> VDate d 
   )
 
 (* Fonction spécifique de manipulation des valeurs (comparaison, addition, concaténation, etc.) *)
 
 let app_arithm v1 v2 op_name op1 op2 =
-	match (v1,v2) with 
+	match (v1,v2) with
 	| VInt i1, VInt i2 -> VInt (op1 i1 i2)
 	| VInt i1, VFloat f1 -> VFloat(op2 (float_of_int i1) f1)
   | VFloat f1, VInt i1 -> VFloat(op2  f1 (float_of_int i1))

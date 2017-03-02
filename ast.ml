@@ -1,8 +1,10 @@
 
-
-
 open Value
+open Sqldate
+
 module R = Relation.Make(Value)
+
+(* constructors *)
 
 type expression = 
 	| EXPRAttribute of string * string (* id.id *)
@@ -23,6 +25,12 @@ type expression =
 	| EXPRCaseExprElse of expression * whenExprThen * expression
 	| EXPRCaseCond of whenCondThen
 	| EXPRCaseCondElse of whenCondThen * expression
+	| EXPRDate of exprDate
+	| EXPRExtract of string * exprDate
+
+and exprDate = 
+	| DATECurrent
+	| DATEDate of date
 
 and whenExprThen = 
 	| WHENExprThen of expression * expression
@@ -94,8 +102,6 @@ and simple_query =
 	| SQUERYSelectAllFromWhere of projection * source * condition
 	| SQUERYSelectDistinctFromWhere of projection * source * condition
 
-(* constructors *)
-
 let cst_exprAttribute s1 s2 = EXPRAttribute(s1,s2)
 let cst_exprPar e = EXPRPar(e)
 let cst_exprInt i = EXPRInt(i)
@@ -120,6 +126,12 @@ let cst_whenExprThen e1 e2 = WHENExprThen(e1, e2)
 let cst_whenExprThenExtends e1 e2 wet = WHENExprThenExtends(e1, e2, wet)
 let cst_whenCondThen c e = WHENCondThen(c, e)
 let cst_whenCondThenExtends c e wct = WHENCondThenExtends(c, e, wct)
+
+let cst_exprDate ed = EXPRDate(ed)
+let cst_exprExtract s ed = EXPRExtract(s, ed)
+
+let cst_dateCurrent = DATECurrent
+let cst_dateDate s = DATEDate(date_of_string s)
 
 let cst_columnExpr e = COLExpr(e)
 let cst_columnExprId e s = COLExprId(e,s)
@@ -250,7 +262,14 @@ and string_of_expression expr = match expr with
 	| EXPRCaseCond(wct) -> Printf.sprintf "CASE %s END" (string_of_whenCondThen wct)
 	| EXPRCaseCondElse(wct, expr1) -> Printf.sprintf "CASE %s ELSE %s END" 
 													    (string_of_whenCondThen wct)
-														(string_of_expression expr1)  														   
+														(string_of_expression expr1) 
+    | EXPRDate(ed) -> string_of_exprDate ed
+    | EXPRExtract(s, ed) -> Printf.sprintf "EXTRACT(%s FROM %s)"
+    										 s (string_of_exprDate ed)
+
+and string_of_exprDate exprDate = match exprDate with
+	| DATECurrent -> "CURRENT_DATE"
+	| DATEDate(date) -> string_of_date date   
 
 and string_of_whenExprThen wet = match wet with
 	| WHENExprThen(expr1, expr2) -> Printf.sprintf "WHEN %s THEN %s" 
@@ -532,10 +551,6 @@ and eval_source r_env source =
 	let rec rename g name = match g with
 		  | [] -> [] 
 		  | (s, att) :: next -> ((name ^ "." ^ s), att) :: (rename next name)
-	in
-	let find_name r1 g1 = match Env.find_key (r1, g1) r_env with
-		  | None -> failwith ""
-		  | Some(s) -> s
 	in
 	let prepare_att_envs r1 r2 g1 g2 =
 		let rec count_att g = match g with

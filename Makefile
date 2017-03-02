@@ -3,16 +3,18 @@ EXEC=project
 
 # Liste des sources du projet, données dans l'ordre
 SOURCES=\
-  env.mli       \
-  env.ml        \
+  sqldate.mli   \
+  sqldate.ml    \
   relation.mli  \
   relation.ml   \
-	value.ml      \
+  env.mli       \
+  env.ml        \
 	ast.mli \
 	ast.ml	\
+	value.ml      \
 	parser.mly	\
 	lexer.mll	\
-	main.ml
+	main.ml		
 
 # Partie générique à ne pas modifier
 OCAMLC=ocamlc

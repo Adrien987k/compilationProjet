@@ -40,6 +40,9 @@ let _ =
                 "THEN", THEN;
                 "ELSE", ELSE;
                 "END", END;
+                "DATE", DATE;
+                "CURRENT_DATE", CURRENT_DATE;
+                "EXTRACT", EXTRACT 
              ]
 
 }

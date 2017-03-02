@@ -1,4 +1,6 @@
 
+open Sqldate
+
 module R : Relation.S
 
 type expression
@@ -12,7 +14,7 @@ type predicate
 type simple_query
 type whenExprThen
 type whenCondThen
-
+type exprDate
 
 val cst_exprAttribute: string -> string -> expression
 val cst_exprPar: expression -> expression
@@ -28,11 +30,15 @@ val cst_exprPPipe: expression -> expression -> expression
 val cst_exprLower: expression -> expression
 val cst_exprUpper: expression -> expression
 val cst_exprSubString: expression -> expression -> expression -> expression
-
 val cst_exprCaseExpr: expression -> whenExprThen -> expression
 val cst_exprCaseExprElse: expression -> whenExprThen -> expression -> expression
 val cst_exprCaseCond: whenCondThen -> expression
 val cst_exprCaseCondElse: whenCondThen -> expression -> expression
+val cst_exprDate: exprDate -> expression
+val cst_exprExtract: string -> exprDate -> expression
+
+val cst_dateCurrent: exprDate
+val cst_dateDate: string -> exprDate
 
 val cst_whenExprThen: expression -> expression -> whenExprThen
 val cst_whenExprThenExtends: expression -> expression -> whenExprThen -> whenExprThen
@@ -94,6 +100,7 @@ val cst_squerySelectAllFromWhere: projection -> source -> condition -> simple_qu
 val cst_squerySelectDistinctFromWhere: projection -> source -> condition -> simple_query
 
 val string_of_query: simple_query -> string
+val string_of_exprDate: exprDate -> string
 
 (*val eval_condition: 'a Env.env -> condition -> ('a -> bool)
 val eval_predicate: 'a Env.env -> predicate -> ('a -> bool) *)
