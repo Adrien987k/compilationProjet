@@ -35,7 +35,7 @@ val cst_exprCaseExprElse: expression -> whenExprThen -> expression -> expression
 val cst_exprCaseCond: whenCondThen -> expression
 val cst_exprCaseCondElse: whenCondThen -> expression -> expression
 val cst_exprDate: exprDate -> expression
-val cst_exprExtract: string -> exprDate -> expression
+val cst_exprExtract: dateField -> exprDate -> expression
 
 val cst_dateCurrent: exprDate
 val cst_dateDate: date -> exprDate

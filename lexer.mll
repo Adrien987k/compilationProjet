@@ -42,7 +42,10 @@ let _ =
                 "END", END;
                 "DATE", DATE;
                 "CURRENT_DATE", CURRENT_DATE;
-                "EXTRACT", EXTRACT 
+                "EXTRACT", EXTRACT;
+                "YEAR", YEAR;
+                "MONTH", MONTH;
+                "DAY", DAY;
              ]
 
 }
@@ -74,8 +77,8 @@ rule anlex = parse
     '.'  ['0'-'9']+ ['0'-'9']+ ('e' | 'E' ('-' | '+')? ['0'-'9']+ )?) as lxm
                                           { FLOAT(float_of_string lxm) }
   | ['0'-'9']+ as lxm                     { INT(int_of_string lxm) }
-  | ''' ([^'''] | "''")* ''' as lxm       { STRING(lxm) }
-  | (['a'-'z' 'A'-'Z'] ((['a'-'z' 'A'-'Z' '0'-'9']) | "é"
+  | ''' (([^'''] | "''")* as lxm) '''     { STRING(lxm) }
+  | (['a'-'z' 'A'-'Z'] ((['a'-'z' 'A'-'Z' '0'-'9' '_']) | "é"
                                   | "à" | "ç" | "è")+ ) as lxm { try 
                                                              Hashtbl.find keyword_table lxm
                                                              with Not_found -> ID(lxm)

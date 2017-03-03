@@ -26,7 +26,7 @@ type expression =
 	| EXPRCaseCond of whenCondThen
 	| EXPRCaseCondElse of whenCondThen * expression
 	| EXPRDate of exprDate
-	| EXPRExtract of string * exprDate
+	| EXPRExtract of dateField * exprDate
 
 and exprDate = 
 	| DATECurrent
@@ -128,7 +128,7 @@ let cst_whenCondThen c e = WHENCondThen(c, e)
 let cst_whenCondThenExtends c e wct = WHENCondThenExtends(c, e, wct)
 
 let cst_exprDate ed = EXPRDate(ed)
-let cst_exprExtract s ed = EXPRExtract(s, ed)
+let cst_exprExtract df ed = EXPRExtract(df, ed)
 
 let cst_dateCurrent = DATECurrent
 let cst_dateDate d = DATEDate(d)
@@ -264,12 +264,13 @@ and string_of_expression expr = match expr with
 													    (string_of_whenCondThen wct)
 														(string_of_expression expr1) 
     | EXPRDate(ed) -> string_of_exprDate ed
-    | EXPRExtract(s, ed) -> Printf.sprintf "EXTRACT(%s FROM %s)"
-    										 s (string_of_exprDate ed)
+    | EXPRExtract(df, ed) -> Printf.sprintf "EXTRACT(%s FROM %s)"
+    										(string_of_dateField df)
+    									    (string_of_exprDate ed)
 
 and string_of_exprDate exprDate = match exprDate with
-	| DATECurrent -> "CURRENT_DATE"
-	| DATEDate(date) -> string_of_date date   
+	| DATECurrent -> string_of_date current_date
+	| DATEDate(date) -> string_of_date date
 
 and string_of_whenExprThen wet = match wet with
 	| WHENExprThen(expr1, expr2) -> Printf.sprintf "WHEN %s THEN %s" 
@@ -384,6 +385,7 @@ let rec domain_of_expression r att_env expr = match expr with
 						   | DInt -> DInt
 						   | DFloat -> DFloat
 						   | DVChar -> failwith ""
+						   | _ -> failwith ""
 						   end
 	| EXPRString(_) -> DVChar
 	| EXPRPPipe(expr1, expr2) -> begin
@@ -399,12 +401,15 @@ let rec domain_of_expression r att_env expr = match expr with
 											       domain_of_expression r att_env expr3) with
 											| (DVChar, DInt, DInt) -> DVChar
 											| _ -> failwith ""
-											end 
+											end
+	| EXPRDate(_) -> DDate
+	| EXPRExtract(_, _) -> DInt 
 	(*
 	| EXPRCaseExpr(expr1, wet) -> 
 	| EXPRCaseExprElse(expr1, wet, expr2) -> 
 	| EXPRCaseCond(wct) -> 
 	| EXPRCaseCondElse(wct, expr1) ->  *)
+	
 
 let is_null env expr = match expr with
 	| EXPRAttribute(str1, str2) -> let attr1 = Env.find str1 env in
@@ -535,6 +540,12 @@ and eval_expression env expr =
 	| EXPRCaseCond(wct) -> 
 	| EXPRCaseCondElse(wct, expr1) -> 
 *)
+	| EXPRDate(ed) -> (fun t -> Some(VDate(eval_exprDate ed)))
+	| EXPRExtract(df, ed) -> (fun t -> Some(VInt(extract_date df (eval_exprDate ed))))
+
+and eval_exprDate ed = match ed with
+	| DATEDate d -> d
+	| DATECurrent -> current_date
 
 and eval_whenExprThen expr wet = match wet with
 	| WHENExprThen(expr1, expr2) -> if expr = expr1 then Some(expr2) else None  

@@ -16,7 +16,8 @@
 %token ALL AND AS BETWEEN BY CROSS DISTINCT FALSE FOR
 		FROM FULL GROUP HAVING INNER IS JOIN LEFT LOWER
 		NOT NULL ON OR OUTER RIGHT SELECT SUBSTRING TRUE UNKNOWN
-		UPPER WHERE CASE WHEN THEN ELSE END EXTRACT CURRENT_DATE DATE
+		UPPER WHERE CASE WHEN THEN ELSE END 
+		EXTRACT CURRENT_DATE DATE YEAR MONTH DAY
 %token PC
 /* Priorities and associativity */
 
@@ -127,12 +128,17 @@ expression:
 	| CASE when_cond_then END                                       { cst_exprCaseCond $2 }
 	| CASE when_cond_then ELSE expression END                       { cst_exprCaseCondElse $2 $4 }
 	| date                                                          { cst_exprDate $1 }
-	| EXTRACT LPAR STRING FROM date RPAR						    { cst_exprExtract $3 $5 }
+	| EXTRACT LPAR date_field FROM date RPAR						{ cst_exprExtract $3 $5 }
 ;
 
 date:
 	| CURRENT_DATE													{ cst_dateCurrent }
 	| DATE STRING                                                   { cst_dateDate (date_of_string $2) }
+
+date_field:
+	| YEAR															{ cst_dateFieldYear }
+	| MONTH															{ cst_dateFieldMonth }
+	| DAY															{ cst_dateFieldDay }
 
 when_expr_then:
 	| WHEN expression THEN expression						{ cst_whenExprThen $2 $4 }
