@@ -38,7 +38,7 @@ val cst_exprDate: exprDate -> expression
 val cst_exprExtract: string -> exprDate -> expression
 
 val cst_dateCurrent: exprDate
-val cst_dateDate: string -> exprDate
+val cst_dateDate: date -> exprDate
 
 val cst_whenExprThen: expression -> expression -> whenExprThen
 val cst_whenExprThenExtends: expression -> expression -> whenExprThen -> whenExprThen

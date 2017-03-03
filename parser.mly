@@ -1,5 +1,5 @@
 %{
-	(*open Sqldate*)
+	open Sqldate
 	open Ast
 %}
 
@@ -132,7 +132,7 @@ expression:
 
 date:
 	| CURRENT_DATE													{ cst_dateCurrent }
-	| DATE STRING                                                   { cst_dateDate $2 }
+	| DATE STRING                                                   { cst_dateDate (date_of_string $2) }
 
 when_expr_then:
 	| WHEN expression THEN expression						{ cst_whenExprThen $2 $4 }

@@ -3,15 +3,15 @@ EXEC=project
 
 # Liste des sources du projet, données dans l'ordre
 SOURCES=\
-  sqldate.mli   \
-  sqldate.ml    \
-  relation.mli  \
-  relation.ml   \
   env.mli       \
   env.ml        \
+  relation.mli  \
+  relation.ml   \
+  sqldate.mli   \
+  sqldate.ml    \
+	value.ml      \
 	ast.mli \
 	ast.ml	\
-	value.ml      \
 	parser.mly	\
 	lexer.mll	\
 	main.ml		
@@ -41,7 +41,7 @@ TRASH+= depend
 default: $(EXEC)
 
 $(EXEC): $(OBJECTS)
-	ocamlc -o $@ $(filter-out %cmi,$^)
+	ocamlc -o $@ unix.cma $(filter-out %cmi,$^)
 
 .mly.ml:
 	$(OCAMLYACC) -v $<

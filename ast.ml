@@ -131,7 +131,7 @@ let cst_exprDate ed = EXPRDate(ed)
 let cst_exprExtract s ed = EXPRExtract(s, ed)
 
 let cst_dateCurrent = DATECurrent
-let cst_dateDate s = DATEDate(date_of_string s)
+let cst_dateDate d = DATEDate(d)
 
 let cst_columnExpr e = COLExpr(e)
 let cst_columnExprId e s = COLExprId(e,s)

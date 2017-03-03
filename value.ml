@@ -20,6 +20,7 @@ type value =
   | VVChar of string
   | VDate of date
 
+
 (* Fonctions de conversion entre chaînes de caractères et valeurs/domaines (utilisées dans l'import/export des CSV) *)
 
 let domain_of_string s =
