@@ -54,7 +54,7 @@ and projection =
 
 and source = 
 	| SOURID of string
-	| SOURSQuery of simple_query
+	| SOURQuery of query
 	| SOURComma of source * source
 	| SOURCrossJoin of source * source
 	| SOURJoinOn of source * joinOp * source * condition
@@ -102,6 +102,15 @@ and simple_query =
 	| SQUERYSelectAllFromWhere of projection * source * condition
 	| SQUERYSelectDistinctFromWhere of projection * source * condition
 
+and query = 
+	| QUERYSimple of simple_query
+	| QUERYUnion of query * query
+	| QUERYUnionAll of query * query
+	| QUERYExcept of query * query
+	| QUERYExceptAll of query * query
+	| QUERYIntersect of query * query
+	| QUERYIntersectAll of query * query
+
 let cst_exprAttribute s1 s2 = EXPRAttribute(s1,s2)
 let cst_exprPar e = EXPRPar(e)
 let cst_exprInt i = EXPRInt(i)
@@ -143,7 +152,7 @@ let cst_projAsterisk = PROJAsterisk
 let cst_projColumns c = PROJColumns(c)
 
 let cst_sourId s = SOURID(s)
-let cst_sourSQuery sq = SOURSQuery(sq)
+let cst_sourQuery sq = SOURQuery(sq)
 let cst_sourComma s1 s2 = SOURComma(s1,s2)
 let cst_sourCrossJoin s1 s2 = SOURCrossJoin(s1,s2)
 let cst_sourJoinOn s1 op s2 c = SOURJoinOn(s1,op,s2,c)
@@ -187,8 +196,36 @@ let cst_squerySelectFromWhere p s c = SQUERYSelectFromWhere(p,s,c)
 let cst_squerySelectAllFromWhere p s c = SQUERYSelectAllFromWhere(p,s,c)
 let cst_squerySelectDistinctFromWhere p s c = SQUERYSelectDistinctFromWhere(p,s,c)
 
+let cst_querySimple sq = QUERYSimple(sq)
+let cst_queryUnion q1 q2 = QUERYUnion(q1, q2)
+let cst_queryUnionAll q1 q2 = QUERYUnionAll(q1, q2)
+let cst_queryExcept q1 q2 = QUERYExcept(q1, q2)
+let cst_queryExceptAll q1 q2 = QUERYExceptAll(q1, q2)
+let cst_queryIntersect q1 q2 = QUERYIntersect(q1, q2)
+let cst_queryIntersectAll q1 q2 = QUERYIntersectAll(q1, q2)
 
 let rec string_of_query query = match query with
+	| QUERYSimple sq -> string_of_simple_query sq 
+	| QUERYUnion(q1, q2) -> Printf.sprintf "%s\nUNION\n%s"
+										 (string_of_query q1)
+										 (string_of_query q2)
+	| QUERYUnionAll(q1, q2) -> Printf.sprintf "%s\nUNION ALL\n%s"
+										 (string_of_query q1)
+										 (string_of_query q2)
+	| QUERYExcept(q1, q2) -> Printf.sprintf "%s\nEXCEPT\n%s"
+										 (string_of_query q1)
+										 (string_of_query q2)
+	| QUERYExceptAll(q1, q2) -> Printf.sprintf "%s\nEXCEPT ALL\n%s"
+										 (string_of_query q1)
+										 (string_of_query q2)
+	| QUERYIntersect(q1, q2) -> Printf.sprintf "%s\nINTERSECT\n%s"
+										 (string_of_query q1)
+										 (string_of_query q2)
+	| QUERYIntersectAll(q1, q2) -> Printf.sprintf "%s\nINTERSECT ALL\n%s"
+										 (string_of_query q1)
+										 (string_of_query q2)
+
+and string_of_simple_query squery = match squery with
 	| SQUERYSelectFrom(proj, src) -> Printf.sprintf "SELECT %s\nFROM %s\n\n"
 													   (string_of_projection proj)
 													   (string_of_source src)
@@ -292,7 +329,7 @@ and string_of_whenCondThen wct = match wct with
 
 and string_of_source source = match source with
 	| SOURID(str1) -> str1
-	| SOURSQuery(squery) -> Printf.sprintf "(%s)" (string_of_query squery)
+	| SOURQuery(query) -> Printf.sprintf "(%s)" (string_of_query query)
 	| SOURComma(src1, src2) -> Printf.sprintf "%s, %s" (string_of_source src1)
 													   (string_of_source src2)
 	| SOURCrossJoin(src1, src2) -> Printf.sprintf "%s CROSS JOIN %s" 
@@ -602,7 +639,7 @@ and eval_source r_env source =
 										| (r, att_env) -> (r, rename att_env str1)
 										end
 					  end
-	| SOURSQuery(squery) -> eval_query r_env squery
+	| SOURQuery(query) -> eval_query r_env query
 	| SOURComma(src1, src2)
 	| SOURCrossJoin(src1, src2) -> join_app src1 src2 R.crossjoin
 	| SOURJoinOn(src1, join, src2, cond) ->
@@ -677,7 +714,7 @@ and eval_column_extends r att_env col_list =
 
 
 
-and eval_query r_env query = 
+and eval_simple_query r_env squery = 
 	let source_proj proj src =
 		match eval_source r_env src with
 		| (r, att_env) -> let res_eval_proj = eval_projection r att_env proj in
@@ -696,7 +733,7 @@ and eval_query r_env query =
 							  				  )
 							  end
 	in
-	match query with
+	match squery with
 	| SQUERYSelectFrom(proj, src)
 	| SQUERYSelectAllFrom(proj, src) -> source_proj proj src
 	| SQUERYSelectDistinctFrom(proj, src) -> begin
@@ -710,3 +747,14 @@ and eval_query r_env query =
 				match source_proj_cond proj src cond with
 				| (r, att_env) -> (R.distinct(r), att_env)
 				end 
+
+and eval_query r_env query = match query with
+	| QUERYSimple sq -> eval_simple_query r_env sq
+	(*
+	| QUERYUnion(q1, q2) -> 
+	| QUERYUnionAll(q1, q2) -> 
+	| QUERYExcept(q1, q2) -> 
+	| QUERYExceptAll(q1, q2) -> 
+	| QUERYIntersect(q1, q2) -> 
+	| QUERYIntersectAll(q1, q2) ->
+	*) 

@@ -12,6 +12,7 @@ type joinOp
 type condition
 type predicate
 type simple_query
+type query
 type whenExprThen
 type whenCondThen
 type exprDate
@@ -55,7 +56,7 @@ val cst_projAsterisk: projection
 val cst_projColumns: columnExtends -> projection
 
 val cst_sourId: string -> source
-val cst_sourSQuery: simple_query -> source
+val cst_sourQuery: query -> source
 val cst_sourComma: source -> source -> source
 val cst_sourCrossJoin: source -> source -> source
 val cst_sourJoinOn: source -> joinOp -> source -> condition -> source
@@ -99,10 +100,18 @@ val cst_squerySelectFromWhere: projection -> source -> condition -> simple_query
 val cst_squerySelectAllFromWhere: projection -> source -> condition -> simple_query
 val cst_squerySelectDistinctFromWhere: projection -> source -> condition -> simple_query
 
-val string_of_query: simple_query -> string
+val cst_querySimple: simple_query -> query
+val cst_queryUnion: query -> query -> query
+val cst_queryUnionAll: query -> query -> query
+val cst_queryExcept: query -> query -> query
+val cst_queryExceptAll: query -> query -> query
+val cst_queryIntersect: query -> query -> query
+val cst_queryIntersectAll: query -> query -> query
+
+val string_of_query: query -> string
 val string_of_exprDate: exprDate -> string
 
 (*val eval_condition: 'a Env.env -> condition -> ('a -> bool)
 val eval_predicate: 'a Env.env -> predicate -> ('a -> bool) *)
 (* val eval_expression: 'a Env.env -> expression -> ('b -> 'c) *)
-val eval_query: (R.relation * R.attribute Env.env) Env.env -> simple_query -> (R.relation * R.attribute Env.env)
+val eval_query: (R.relation * R.attribute Env.env) Env.env -> query -> (R.relation * R.attribute Env.env)

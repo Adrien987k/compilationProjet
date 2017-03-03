@@ -18,11 +18,14 @@
 		NOT NULL ON OR OUTER RIGHT SELECT SUBSTRING TRUE UNKNOWN
 		UPPER WHERE CASE WHEN THEN ELSE END 
 		EXTRACT CURRENT_DATE DATE YEAR MONTH DAY
+		UNION EXCEPT INTERSECT
 %token PC
 /* Priorities and associativity */
 
 /* ------------------ TO DO ------------------  */
 
+%left UNION EXCEPT
+%left INTERSECT
 %nonassoc CROSS FULL INNER JOIN LEFT OUTER RIGHT ASTERISK
 %nonassoc EQ NEQ LT GT LE GE
 %left PPIPE COMMA
@@ -33,7 +36,7 @@
 %left IS
 %nonassoc PC
 
-%type <simple_query> ansyn
+%type <query> ansyn
 %start ansyn
 
 %%
@@ -44,6 +47,16 @@ ansyn:
 ;
 
 query:
+	| simple_query                              { cst_querySimple $1 }
+	| query UNION query 						{ cst_queryUnion $1 $3 }
+	| query UNION ALL query 					{ cst_queryUnionAll $1 $4 }
+	| query EXCEPT query 						{ cst_queryExcept $1 $3 }
+	| query EXCEPT ALL query 					{ cst_queryExceptAll $1 $4 }
+	| query INTERSECT query 					{ cst_queryIntersect $1 $3 }
+	| query INTERSECT ALL query                 { cst_queryIntersectAll $1 $4 }   
+;
+
+simple_query:
 	| SELECT projection FROM source								{ cst_squerySelectFrom $2 $4 }
 	| SELECT ALL projection FROM source							{ cst_squerySelectAllFrom $3 $5 }
 	| SELECT DISTINCT projection FROM source					{ cst_squerySelectDistinctFrom $3 $5 }
@@ -68,7 +81,7 @@ projection:
 
 source:
 	| ID 										{ cst_sourId $1 }
-	| LPAR query RPAR							{ cst_sourSQuery $2 }
+	| LPAR query RPAR							{ cst_sourQuery $2 }
 	| source COMMA source						{ cst_sourComma $1 $3 }
 	| source CROSS JOIN source					{ cst_sourCrossJoin $1 $4 }
 	| source JOIN source ON condition 			{ cst_sourJoinOn $1 (cst_join) $3 $5 }

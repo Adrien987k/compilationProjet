@@ -46,6 +46,9 @@ let _ =
                 "YEAR", YEAR;
                 "MONTH", MONTH;
                 "DAY", DAY;
+                "UNION", UNION;
+                "EXCEPT", EXCEPT;
+                "INTERSECT", INTERSECT
              ]
 
 }
