@@ -9,6 +9,9 @@ SELECT * FROM vin WHERE DATE '1996-10-24' < DATE '2017-3-3' ;
 SELECT * FROM vin 
 WHERE EXTRACT(MONTH FROM DATE '1996-10-24') > EXTRACT(DAY FROM CURRENT_DATE) ;
 
-SELECT * FROM vin, client ;
+SELECT * FROM vin, commande ;
 
-SELECT * FROM vin INNER JOIN viticulteur ON vin.Région = viticulteur.Région ;
+-- SELECT vin.NVin, vin.Cru, commande.NVin, commande.NCom
+-- FROM vin NATURAL INNER JOIN viticulteur ON 5 = 5;
+
+SELECT * FROM vin INNER JOIN commande ON vin.NVin = commande.NVin ;

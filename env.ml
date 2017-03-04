@@ -17,6 +17,11 @@ let rec add k v env = match env with
   | (k',v') :: env' when k = k' -> (k,v) :: env'
   | (k',v') :: _ when k < k' -> (k,v) :: env
   | c :: env' -> c :: (add k v env')
+
+let rec remove k env = match env with
+  | [] -> []
+  | (k',v) :: env' -> if k' = k then env'
+                      else (k',v) :: (remove k env')
  
 let rec map f env = match env with
   | [] -> []

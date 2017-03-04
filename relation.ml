@@ -644,6 +644,8 @@ sig
 
   val cardinal: relation -> int
 
+  val append: tuple -> tuple -> tuple
+
   val distinct: relation -> relation
 
   val selection: (tuple -> bool) -> relation -> relation
@@ -728,6 +730,8 @@ struct
   let width r = Array.length r.sch
 
   let cardinal r = r.card
+
+  let append t1 t2 = Array.append t1 t2 
 
   let selection pred r =
     let card' = ref r.card in

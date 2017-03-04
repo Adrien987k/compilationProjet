@@ -53,6 +53,8 @@ sig
   (* ''cardinal r'' retourne le nombre de tuples de la relation ''r'' *)
   val cardinal: relation -> int
 
+  val append: tuple -> tuple -> tuple
+
   (* ''distinct r'' retourne la relation ''r'' sans doublon *)
   val distinct: relation -> relation
 

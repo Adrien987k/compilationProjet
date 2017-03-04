@@ -361,7 +361,7 @@ and string_of_joinOp join = match join with
 
 
 and string_of_natural natural = match natural with
-	| NONATURAL -> ""
+	| NONATURAL -> " "
 	| NATURAL -> " NATURAL "
 
 
@@ -413,7 +413,7 @@ let rec domain_of_expression r att_env expr = match expr with
 									begin
 						   			match Env.find attr att_env with
 						   			| Some(attr') -> R.domain r attr'
-						   			| None -> failwith (Printf.sprintf "Error: unknown attribute : %s"
+						   			| None -> failwith (Printf.sprintf "Error: unknown attribute d: %s"
 						   							    attr)
 						   		    end
 	| EXPRPar(expr1) -> domain_of_expression r att_env expr1
@@ -477,47 +477,47 @@ let is_unknown env cond = match cond with
 
 (* End of string_of section *)
 
-let rec eval_condition env cond = match cond with
-	| CONDPred(pred1) -> eval_predicate env pred1
-	| CONDNotCond(cond1) -> (fun t -> not ((eval_condition env cond1) t))
-    | CONDAnd(cond1, cond2) -> (fun t -> if (eval_condition env cond1) t 
-    									 then (eval_condition env cond2) t
+let rec eval_condition att_env cond = match cond with
+	| CONDPred(pred1) -> eval_predicate att_env pred1
+	| CONDNotCond(cond1) -> (fun t -> not ((eval_condition att_env cond1) t))
+    | CONDAnd(cond1, cond2) -> (fun t -> if (eval_condition att_env cond1) t 
+    									 then (eval_condition att_env cond2) t
 							   			 else false)
-	| CONDOr(cond1, cond2) -> (fun t -> if (eval_condition env cond1) t then true 
-							  else (eval_condition env cond2) t)
-	| CONDIsTrue(cond1) -> (fun t -> (eval_condition env cond1) t)
-	| CONDIsNotTrue(cond1) -> (fun t -> not ((eval_condition env cond1) t))
-	| CONDIsFalse(cond1) -> (fun t -> not ((eval_condition env cond1) t))
-	| CONDIsNotFalse(cond1) -> (fun t -> (eval_condition env cond1) t)
+	| CONDOr(cond1, cond2) -> (fun t -> if (eval_condition att_env cond1) t then true 
+							  else (eval_condition att_env cond2) t)
+	| CONDIsTrue(cond1) -> (fun t -> (eval_condition att_env cond1) t)
+	| CONDIsNotTrue(cond1) -> (fun t -> not ((eval_condition att_env cond1) t))
+	| CONDIsFalse(cond1) -> (fun t -> not ((eval_condition att_env cond1) t))
+	| CONDIsNotFalse(cond1) -> (fun t -> (eval_condition att_env cond1) t)
 	(* 
 	| CONDIsUnknown(cond1) -> 
 	| CONDIsNotUnknown(cond1) -> *)
 
-and eval_predicate env pred =
+and eval_predicate att_env pred =
 	let eval_2expr expr1 expr2 op =
 		(fun t -> op  
-		(match (eval_expression env expr1) t with
+		(match (eval_expression att_env expr1) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v1) -> v1)
-		(match (eval_expression env expr2) t with
+		(match (eval_expression att_env expr2) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v2) -> v2))
 	in  
 	let eval_3expr expr1 expr2 expr3 op =
 		(fun t -> op  
-		(match (eval_expression env expr1) t with
+		(match (eval_expression att_env expr1) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v1) -> v1)
-		(match (eval_expression env expr2) t with
+		(match (eval_expression att_env expr2) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v2) -> v2)
-		(match (eval_expression env expr3) t with
+		(match (eval_expression att_env expr3) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v3) -> v3))
 	in
 	match pred with
-	| PREDCond(cond1) -> eval_condition env cond1
-	| PREDEq(expr1, expr2) -> eval_2expr expr1 expr2 eq 
+	| PREDCond(cond1) -> eval_condition att_env cond1
+	| PREDEq(expr1, expr2) -> eval_2expr expr1 expr2 eq
 	| PREDNeq(expr1, expr2) -> eval_2expr expr1 expr2 neq 
 	| PREDLt(expr1, expr2) -> eval_2expr expr1 expr2 lt 
 	| PREDLe(expr1, expr2) -> eval_2expr expr1 expr2 le 
@@ -525,8 +525,8 @@ and eval_predicate env pred =
 	| PREDGe(expr1, expr2) -> eval_2expr expr1 expr2 ge
 	| PREDBetween(expr1, expr2, expr3) -> eval_3expr expr1 expr2 expr3 between
 	| PREDNotBetween(expr1, expr2, expr3) ->  eval_3expr expr1 expr2 expr3 not_between
-	| PREDNull(expr1) -> (fun t -> is_null env expr1)
-	| PREDNotNull(expr1) -> (fun t -> is_not_null env expr1)
+	| PREDNull(expr1) -> (fun t -> is_null att_env expr1)
+	| PREDNotNull(expr1) -> (fun t -> is_not_null att_env expr1)
 
 
 and eval_expression env expr = 
@@ -559,10 +559,9 @@ and eval_expression env expr =
 	in
     match expr with 
 	| EXPRAttribute(str1, str2) -> let attr = str1 ^ "." ^ str2 in
-								   let attr = Env.find attr env in
-								   (match attr with
-									| None -> failwith (Printf.sprintf "Error: unknown attribute : %s" str2)   
-									| Some(a) -> (fun t -> R.attribute a t)) 
+								   (match Env.find attr env with
+									| None -> failwith (Printf.sprintf "Error: unknown attribute : %s" attr)   
+									| Some(att) -> (fun t -> R.attribute att t))
 	| EXPRPar(expr1) -> eval_expression env expr1
 	| EXPRInt(i) -> (fun t -> Some(VInt(i)))
 	| EXPRFloat(f) -> (fun t -> Some(VFloat(f)))
@@ -621,7 +620,7 @@ and eval_source r_env source =
 		let nb_att_g1 = count_att g1 in
 		let rec change_att g = match g with
 		  | [] -> []
-		  | (s, att) :: next -> (s, (+) att nb_att_g1) :: (change_att next)
+		  | (s, att) :: next -> (s, (att + nb_att_g1)) :: (change_att next)
 		  in
 		let g2 = change_att g2 in
 		(g1, g2)
@@ -638,12 +637,58 @@ and eval_source r_env source =
 		let source2 = eval_source r_env s2 in
 		match source1, source2 with
 			| ((r1, g1), (r2, g2)) ->
+					let old_att_env = Env.union g1 g2 in
 					let g1, g2 = prepare_att_envs r1 r2 g1 g2 in
 					let att_env = Env.union g1 g2 in 
-					let pred_1tuple = eval_condition att_env cond in
-					let pred_2tuple = (fun t1 t2 -> (pred_1tuple t1) && (pred_1tuple t2)) in
+					let pred_1tuple = eval_condition old_att_env cond in 
+					let pred_2tuple = (fun t1 t2 -> pred_1tuple (R.append t1 t2)) in
 					(join pred_2tuple r1 r2, att_env)
-	in	
+	in
+	let rec contains l v = 
+		match l with
+		| [] -> false
+		| h :: q -> if h = v then true else contains q v
+	in
+	let eval_proj_for_natural r att_env =
+	(*	
+	    let rec display env = 
+	    match env with
+	    | [] -> ()
+	    | (s, att) :: next -> Printf.printf "%s " s; display next
+	    in
+		let _ =  display att_env in
+	*)
+		let rec collect_attributes_for_natural att_env_init att_l att_env_result = 
+			match att_env_init with
+			| [] -> ([], att_env_result)
+			| (s, attrib) :: next -> 
+				let split = String.split_on_char '.' s in
+				match split with
+				| table :: att :: [] -> if contains att_l att 
+										then (collect_attributes_for_natural next att_l
+											  (Env.remove (table ^ "." ^ att) att_env_result)) 
+				 						else 
+				 						(* let _ = Printf.printf "%s " att in *)
+				 						let result =  (collect_attributes_for_natural next ([att] @ att_l) att_env_result) in
+				 						begin
+				 						match result with
+				 						| (list, att_result') -> ([COLExpr(EXPRAttribute(table, att))] @ list, 
+				 												  att_result')
+				 						| _ -> failwith "Error: debug"
+				 					    end
+				| _ -> failwith (Printf.sprintf "Error: inalide attribute for natural join")
+		in
+		let column_list, att_env = collect_attributes_for_natural att_env ([] : string list) att_env in
+		let rec transform_col_list_in_colExt col_list = 
+			match col_list with
+			| [] -> failwith "Error: No attribute found for natural join"
+			| col :: [] -> COLEXTSingle(col)
+			| col :: next -> COLEXTMany(col, transform_col_list_in_colExt next)
+		in
+		let col_extends_calculated_with_env = transform_col_list_in_colExt column_list in
+		let proj_for_natural = PROJColumns(col_extends_calculated_with_env) in
+		(eval_projection r att_env proj_for_natural, att_env)
+	in
 	match source with
 	| SOURID(str1) -> begin match Env.find str1 r_env with
 						| None -> failwith (Printf.sprintf "Error: unknown source : %s" str1)
@@ -656,6 +701,27 @@ and eval_source r_env source =
 	| SOURComma(src1, src2)
 	| SOURCrossJoin(src1, src2) -> join_app src1 src2 R.crossjoin
 	| SOURJoinOn(src1, natural, join, src2, cond) ->
+		let is_natural = begin match natural with | NONATURAL -> false | NATURAL -> true end in
+		if is_natural 
+		then
+		begin
+		match join with
+			| JOIN  
+			| INNERJOIN -> begin match join_app_cond cond src1 src2 R.innerjoin with
+								 | (r, att_env) -> let res_proj, att_env = eval_proj_for_natural r att_env in
+								 				   begin
+								 				   match res_proj with
+								 				   | (att_env', proj) -> ((R.projection proj r), att_env')
+								 				   end
+						   end	 				   
+			| LEFT 
+			| OUTERLEFT -> join_app_cond cond src1 src2 R.leftouterjoin
+			| FULL 
+			| OUTERFULL -> join_app_cond cond src1 src2 R.fullouterjoin 
+			| RIGHT
+			| OUTERRIGHT ->  join_app_cond cond src2 src1 R.leftouterjoin
+		end
+		else 
 		begin
 		match join with
 			| JOIN  
@@ -680,7 +746,7 @@ and eval_projection r att_env proj =
 					             | _ -> failwith (Printf.sprintf "Error: invalide attribute")
 	in
 	let column_list = collect_attributes att_env in
-	let rec transform_col_list_in_colExt col_list = 
+	let rec transform_col_list_in_colExt col_list =
 		match col_list with
 		| [] -> failwith "Error: No attribute found"
 		| col :: [] -> COLEXTSingle(col)
