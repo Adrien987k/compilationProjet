@@ -748,13 +748,22 @@ and eval_simple_query r_env squery =
 				| (r, att_env) -> (R.distinct(r), att_env)
 				end 
 
-and eval_query r_env query = match query with
+and eval_query r_env query = 
+	let app_queries q1 q2 app op_name dist =
+		match (eval_query r_env q1), (eval_query r_env q2) with
+		| ((r1, g1), (r2, g2)) -> 
+			if g1 = g2 then (if dist then (R.distinct (app r1 r2), g1)
+							 else (app r1 r2, g1)) 
+			else failwith 
+			(Printf.sprintf "Error: operation %s cannot be applied. 
+							Tables do not have the same attribute environement"
+							op_name)
+	in
+	match query with
 	| QUERYSimple sq -> eval_simple_query r_env sq
-	(*
-	| QUERYUnion(q1, q2) -> 
-	| QUERYUnionAll(q1, q2) -> 
-	| QUERYExcept(q1, q2) -> 
-	| QUERYExceptAll(q1, q2) -> 
-	| QUERYIntersect(q1, q2) -> 
-	| QUERYIntersectAll(q1, q2) ->
-	*) 
+	| QUERYUnion(q1, q2) -> app_queries q1 q2 R.union "UNION" true
+	| QUERYUnionAll(q1, q2) -> app_queries q1 q2 R.union "UNION" false
+	| QUERYExcept(q1, q2) -> app_queries q1 q2 R.diff "EXCEPT" true
+	| QUERYExceptAll(q1, q2) -> app_queries q1 q2 R.diff "EXCEPT" false
+	| QUERYIntersect(q1, q2) -> app_queries q1 q2 R.inter "INTERSECT" true
+	| QUERYIntersectAll(q1, q2) -> app_queries q1 q2 R.inter "INTERSECT" false

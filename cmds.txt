@@ -1,12 +1,14 @@
-SELECT vin.NVin, vin.Cru FROM vin ;;
+SELECT vin.NVin, vin.Cru FROM vin ;
 
-SELECT * FROM vin WHERE DATE '1996-10-24' < DATE '2017-3-3' ;;
+SELECT * FROM vin WHERE vin.Millésime > 2000
+UNION
+SELECT * FROM vin ;
+
+SELECT * FROM vin WHERE DATE '1996-10-24' < DATE '2017-3-3' ;
 
 SELECT * FROM vin 
-WHERE EXTRACT(MONTH FROM DATE '1996-10-24') > EXTRACT(DAY FROM CURRENT_DATE) ;;
+WHERE EXTRACT(MONTH FROM DATE '1996-10-24') > EXTRACT(DAY FROM CURRENT_DATE) ;
 
-SELECT * FROM vin WHERE vin.Millésime > 2000 ;;
+SELECT * FROM vin, client ;
 
-SELECT * FROM vin, client ;;
-
-SELECT * FROM vin INNER JOIN viticulteur ON vin.Région = viticulteur.Région ;;
+SELECT * FROM vin INNER JOIN viticulteur ON vin.Région = viticulteur.Région ;
