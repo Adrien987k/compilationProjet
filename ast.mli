@@ -9,6 +9,7 @@ type columnExtends
 type projection
 type source
 type joinOp
+type natural
 type condition
 type predicate
 type simple_query
@@ -59,7 +60,7 @@ val cst_sourId: string -> source
 val cst_sourQuery: query -> source
 val cst_sourComma: source -> source -> source
 val cst_sourCrossJoin: source -> source -> source
-val cst_sourJoinOn: source -> joinOp -> source -> condition -> source
+val cst_sourJoinOn: source -> natural -> joinOp -> source -> condition -> source
 
 val cst_innerjoin: joinOp
 val cst_join: joinOp
@@ -69,6 +70,9 @@ val cst_outerfull: joinOp
 val cst_right: joinOp
 val cst_left: joinOp
 val cst_full: joinOp
+
+val cst_noNatural: natural
+val cst_natural: natural
 
 val cst_condPred: predicate -> condition
 val cst_condNotCond: condition -> condition
@@ -111,7 +115,4 @@ val cst_queryIntersectAll: query -> query -> query
 val string_of_query: query -> string
 val string_of_exprDate: exprDate -> string
 
-(*val eval_condition: 'a Env.env -> condition -> ('a -> bool)
-val eval_predicate: 'a Env.env -> predicate -> ('a -> bool) *)
-(* val eval_expression: 'a Env.env -> expression -> ('b -> 'c) *)
 val eval_query: (R.relation * R.attribute Env.env) Env.env -> query -> (R.relation * R.attribute Env.env)

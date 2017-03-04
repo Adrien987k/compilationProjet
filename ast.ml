@@ -57,7 +57,7 @@ and source =
 	| SOURQuery of query
 	| SOURComma of source * source
 	| SOURCrossJoin of source * source
-	| SOURJoinOn of source * joinOp * source * condition
+	| SOURJoinOn of source * natural * joinOp * source * condition
 
 and joinOp =
 	| INNERJOIN
@@ -68,6 +68,10 @@ and joinOp =
 	| LEFT
 	| RIGHT
 	| FULL
+
+and natural =
+	| NONATURAL
+	| NATURAL
 
 and condition = 
 	| CONDPred of predicate
@@ -146,16 +150,16 @@ let cst_columnExpr e = COLExpr(e)
 let cst_columnExprId e s = COLExprId(e,s)
 
 let cst_columnExtendsSingle c = COLEXTSingle(c)
-let cst_columnExtendsMany c1 c2 = COLEXTMany(c1,c2)
+let cst_columnExtendsMany c1 c2 = COLEXTMany(c1, c2)
 
 let cst_projAsterisk = PROJAsterisk
 let cst_projColumns c = PROJColumns(c)
 
 let cst_sourId s = SOURID(s)
 let cst_sourQuery sq = SOURQuery(sq)
-let cst_sourComma s1 s2 = SOURComma(s1,s2)
-let cst_sourCrossJoin s1 s2 = SOURCrossJoin(s1,s2)
-let cst_sourJoinOn s1 op s2 c = SOURJoinOn(s1,op,s2,c)
+let cst_sourComma s1 s2 = SOURComma(s1, s2)
+let cst_sourCrossJoin s1 s2 = SOURCrossJoin(s1, s2)
+let cst_sourJoinOn s1 nat op s2 c = SOURJoinOn(s1, nat, op, s2, c)
 
 let cst_innerjoin = INNERJOIN
 let cst_join = JOIN
@@ -166,10 +170,13 @@ let cst_right = LEFT
 let cst_left = RIGHT
 let cst_full = FULL
 
+let cst_noNatural = NONATURAL
+let cst_natural = NATURAL
+
 let cst_condPred p = CONDPred(p)
 let cst_condNotCond c = CONDNotCond(c)
-let cst_condAnd c1 c2 = CONDAnd(c1,c2)
-let cst_condOr c1 c2 = CONDOr(c1,c2)
+let cst_condAnd c1 c2 = CONDAnd(c1, c2)
+let cst_condOr c1 c2 = CONDOr(c1, c2)
 let cst_condIsTrue c = CONDIsTrue(c)
 let cst_condIsNotTrue c = CONDIsNotTrue(c)
 let cst_condIsFalse c = CONDIsFalse(c)
@@ -335,11 +342,12 @@ and string_of_source source = match source with
 	| SOURCrossJoin(src1, src2) -> Printf.sprintf "%s CROSS JOIN %s" 
 													   (string_of_source src1)
 													   (string_of_source src2)
-	| SOURJoinOn(src1, join, src2, cond) -> Printf.sprintf "%s %s %s ON %s"
-													(string_of_source src1)
-													(string_of_joinOp join)
-													(string_of_source src2)
-													(string_of_condition cond)
+	| SOURJoinOn(src1, natural, join, src2, cond) -> Printf.sprintf "%s%s%s %s ON %s"
+													 (string_of_source src1)
+													 (string_of_natural natural)
+													 (string_of_joinOp join)
+													 (string_of_source src2)
+													 (string_of_condition cond)
 
 and string_of_joinOp join = match join with
 	| INNERJOIN -> "INNER JOIN"
@@ -350,6 +358,11 @@ and string_of_joinOp join = match join with
 	| LEFT -> "LEFT JOIN"
 	| RIGHT -> "RIGHT JOIN"
 	| FULL -> "FULL JOIN"
+
+
+and string_of_natural natural = match natural with
+	| NONATURAL -> ""
+	| NATURAL -> " NATURAL "
 
 
 and string_of_condition cond = match cond with
@@ -642,7 +655,7 @@ and eval_source r_env source =
 	| SOURQuery(query) -> eval_query r_env query
 	| SOURComma(src1, src2)
 	| SOURCrossJoin(src1, src2) -> join_app src1 src2 R.crossjoin
-	| SOURJoinOn(src1, join, src2, cond) ->
+	| SOURJoinOn(src1, natural, join, src2, cond) ->
 		begin
 		match join with
 			| JOIN  

@@ -48,7 +48,8 @@ let _ =
                 "DAY", DAY;
                 "UNION", UNION;
                 "EXCEPT", EXCEPT;
-                "INTERSECT", INTERSECT
+                "INTERSECT", INTERSECT;
+                "NATURAL", NATURAL
              ]
 
 }

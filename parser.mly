@@ -19,6 +19,7 @@
 		UPPER WHERE CASE WHEN THEN ELSE END 
 		EXTRACT CURRENT_DATE DATE YEAR MONTH DAY
 		UNION EXCEPT INTERSECT
+		NATURAL
 %token PC
 /* Priorities and associativity */
 
@@ -84,15 +85,19 @@ source:
 	| LPAR query RPAR							{ cst_sourQuery $2 }
 	| source COMMA source						{ cst_sourComma $1 $3 }
 	| source CROSS JOIN source					{ cst_sourCrossJoin $1 $4 }
-	| source JOIN source ON condition 			{ cst_sourJoinOn $1 (cst_join) $3 $5 }
-	| source INNER JOIN source ON condition		{ cst_sourJoinOn $1 (cst_innerjoin) $4 $6 }
-	| source RIGHT JOIN source ON condition			{ cst_sourJoinOn $1 (cst_right) $4 $6 }
-	| source LEFT JOIN source ON condition			{ cst_sourJoinOn $1 (cst_left) $4 $6 }
-	| source FULL JOIN source ON condition			{ cst_sourJoinOn $1 (cst_full) $4 $6 }
-	| source RIGHT OUTER JOIN source ON condition	{ cst_sourJoinOn $1 (cst_outerright) $5 $7 }
-	| source LEFT OUTER JOIN source ON condition		{ cst_sourJoinOn $1 (cst_outerleft) $5 $7 }
-	| source FULL OUTER JOIN source ON condition		{ cst_sourJoinOn $1 (cst_outerfull) $5 $7 }
+	| source natural JOIN source ON condition 			{ cst_sourJoinOn $1 $2 (cst_join) $4 $6 }
+	| source natural INNER JOIN source ON condition		{ cst_sourJoinOn $1 $2 (cst_innerjoin) $5 $7 }
+	| source natural RIGHT JOIN source ON condition			{ cst_sourJoinOn $1 $2 (cst_right) $5 $7 }
+	| source natural LEFT JOIN source ON condition			{ cst_sourJoinOn $1 $2 (cst_left) $5 $7 }
+	| source natural FULL JOIN source ON condition			{ cst_sourJoinOn $1 $2 (cst_full) $5 $7 }
+	| source natural RIGHT OUTER JOIN source ON condition	{ cst_sourJoinOn $1 $2 (cst_outerright) $6 $8 }
+	| source natural LEFT OUTER JOIN source ON condition		{ cst_sourJoinOn $1 $2 (cst_outerleft) $6 $8 }
+	| source natural FULL OUTER JOIN source ON condition		{ cst_sourJoinOn $1 $2 (cst_outerfull) $6 $8 }
 ;
+
+natural:
+	|                                               { cst_noNatural }
+	| NATURAL                                       { cst_natural }
 
 condition:
 	| predicate 						{ cst_condPred $1 }
