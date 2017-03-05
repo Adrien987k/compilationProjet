@@ -7,6 +7,7 @@ module R = Relation.Make(Value)
 (* constructors *)
 
 type expression = 
+	| EXPRId of string
 	| EXPRAttribute of string * string (* id.id *)
 	| EXPRPar of expression
 	| EXPRInt of int
@@ -115,6 +116,7 @@ and query =
 	| QUERYIntersect of query * query
 	| QUERYIntersectAll of query * query
 
+let cst_exprId s = EXPRId(s)
 let cst_exprAttribute s1 s2 = EXPRAttribute(s1,s2)
 let cst_exprPar e = EXPRPar(e)
 let cst_exprInt i = EXPRInt(i)
@@ -233,24 +235,24 @@ let rec string_of_query query = match query with
 										 (string_of_query q2)
 
 and string_of_simple_query squery = match squery with
-	| SQUERYSelectFrom(proj, src) -> Printf.sprintf "SELECT %s\nFROM %s\n\n"
+	| SQUERYSelectFrom(proj, src) -> Printf.sprintf "SELECT %s\nFROM %s"
 													   (string_of_projection proj)
 													   (string_of_source src)
-	| SQUERYSelectAllFrom(proj, src) -> Printf.sprintf "SELECT ALL %s\nFROM %s\n\n"
+	| SQUERYSelectAllFrom(proj, src) -> Printf.sprintf "SELECT ALL %s\nFROM %s"
 													   (string_of_projection proj)
 													   (string_of_source src)
-	| SQUERYSelectDistinctFrom(proj, src) -> Printf.sprintf "SELECT DISTINCT %s\nFROM %s\n\n"
+	| SQUERYSelectDistinctFrom(proj, src) -> Printf.sprintf "SELECT DISTINCT %s\nFROM %s"
 													   (string_of_projection proj)
 													   (string_of_source src)
-	| SQUERYSelectFromWhere(proj, src, cond) -> Printf.sprintf "SELECT %s\nFROM %s\nWHERE %s\n\n"
-													   (string_of_projection proj)
-													   (string_of_source src)
-													   (string_of_condition cond)
-	| SQUERYSelectAllFromWhere(proj, src, cond) -> Printf.sprintf "SELECT ALL %s\nFROM %s\nWHERE %s\n\n"
+	| SQUERYSelectFromWhere(proj, src, cond) -> Printf.sprintf "SELECT %s\nFROM %s\nWHERE %s"
 													   (string_of_projection proj)
 													   (string_of_source src)
 													   (string_of_condition cond)
-	| SQUERYSelectDistinctFromWhere(proj, src, cond) -> Printf.sprintf "SELECT DISTINCT %s\nFROM %s\nWHERE %s\n\n"
+	| SQUERYSelectAllFromWhere(proj, src, cond) -> Printf.sprintf "SELECT ALL %s\nFROM %s\nWHERE %s"
+													   (string_of_projection proj)
+													   (string_of_source src)
+													   (string_of_condition cond)
+	| SQUERYSelectDistinctFromWhere(proj, src, cond) -> Printf.sprintf "SELECT DISTINCT %s\nFROM %s\nWHERE %s"
 													   (string_of_projection proj)
 													   (string_of_source src)
 													   (string_of_condition cond)
@@ -274,6 +276,7 @@ and string_of_column_extends col_list = match col_list with
 
 
 and string_of_expression expr = match expr with
+	| EXPRId(str) -> str
 	| EXPRAttribute(str1, str2) -> Printf.sprintf "%s.%s" str1 str2
 	| EXPRPar(expr1) -> Printf.sprintf "(%s)" (string_of_expression expr)
 	| EXPRInt(n) -> Printf.sprintf "%i" n
@@ -409,11 +412,16 @@ and string_of_predicate pred = match pred with
 
 
 let rec domain_of_expression r att_env expr = match expr with
+	| EXPRId(str) -> begin
+					 match Env.find str att_env with
+					 | Some(attr') -> R.domain r attr'
+					 | None -> failwith (Printf.sprintf "Error unknown attribute: %s" str)
+					 end
 	| EXPRAttribute(str1, str2) ->  let attr = str1 ^ "." ^ str2 in
 									begin
 						   			match Env.find attr att_env with
 						   			| Some(attr') -> R.domain r attr'
-						   			| None -> failwith (Printf.sprintf "Error: unknown attribute d: %s"
+						   			| None -> failwith (Printf.sprintf "Error: unknown attribute: %s"
 						   							    attr)
 						   		    end
 	| EXPRPar(expr1) -> domain_of_expression r att_env expr1
@@ -462,6 +470,15 @@ let rec domain_of_expression r att_env expr = match expr with
 	
 
 let rec is_null att_env expr t = match expr with
+	| EXPRId(str) -> begin
+					 match Env.find str att_env with
+					 | Some(attr') -> begin
+					 				  match R.attribute attr' t with
+					 				  | Some(v) -> false
+					 				  | None -> true
+					 				  end
+					 | None -> failwith (Printf.sprintf "Error: unknown attrubute: %s" str)
+					 end 
 	| EXPRAttribute(str1, str2) -> let attr = str1 ^ "." ^ str2 in
 								   begin
 								   match Env.find attr att_env with
@@ -581,40 +598,47 @@ and eval_predicate att_env pred =
 	| PREDNotNull(expr1) -> (fun t -> is_not_null att_env expr1 t)
 
 
-and eval_expression env expr = 
+and eval_expression att_env expr = 
 	let eval_1expr expr1 op = 
 		(fun t -> Some(op
-		(match (eval_expression env expr1) t with
+		(match (eval_expression att_env expr1) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v1) -> v1)))
 	in
 	let eval_2expr expr1 expr2 op =
 		(fun t -> Some(op  
-		(match (eval_expression env expr1) t with
+		(match (eval_expression att_env expr1) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v1) -> v1)
-		(match (eval_expression env expr2) t with
+		(match (eval_expression att_env expr2) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v2) -> v2)))
 	in  
 	let eval_3expr expr1 expr2 expr3 op =
 		(fun t -> Some(op  
-		(match (eval_expression env expr1) t with
+		(match (eval_expression att_env expr1) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v1) -> v1)
-		(match (eval_expression env expr2) t with
+		(match (eval_expression att_env expr2) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v2) -> v2)
-		(match (eval_expression env expr3) t with
+		(match (eval_expression att_env expr3) t with
 		| None -> failwith "Error: Syntax error"
 		| Some(v3) -> v3)))
 	in
     match expr with 
+    | EXPRId(str) -> begin
+    				 match Env.find str att_env with
+    				 | Some(att) -> (fun t -> R.attribute att t)
+    				 | None -> failwith (Printf.sprintf "Error: unknown attribute: %s" str)
+    				 end
 	| EXPRAttribute(str1, str2) -> let attr = str1 ^ "." ^ str2 in
-								   (match Env.find attr env with
-									| None -> failwith (Printf.sprintf "Error: unknown attribute : %s" attr)   
-									| Some(att) -> (fun t -> R.attribute att t))
-	| EXPRPar(expr1) -> eval_expression env expr1
+								   begin
+								   match Env.find attr att_env with
+									| Some(att) -> (fun t -> R.attribute att t)
+									| None -> failwith (Printf.sprintf "Error: unknown attribute: %s" attr)   
+								   end
+	| EXPRPar(expr1) -> eval_expression att_env expr1
 	| EXPRInt(i) -> (fun t -> Some(VInt(i)))
 	| EXPRFloat(f) -> (fun t -> Some(VFloat(f)))
 	| EXPRString(s) -> (fun t -> Some(VVChar(s)))
@@ -725,8 +749,19 @@ and eval_source r_env source =
 				 						match result with
 				 						| (list, att_result') -> ([COLExpr(EXPRAttribute(table, att))] @ list, 
 				 												  att_result')
-				 						| _ -> failwith "Error: debug"
+				 						| _ -> failwith "Error: DEBUG COLLECT ATTRIBUTES"
 				 					    end
+				| att :: [] -> if contains att_l att
+							   then (collect_attributes_for_natural next att_l
+							   		 (Env.remove att att_env_result))
+							   else  
+							   let result = (collect_attributes_for_natural next ([att] @ att_l) att_env_result) in
+							   begin
+							   match result with
+							   | (list, att_result') -> ([COLExpr(EXPRId(att))] @ list,
+															 att_result')
+							   | _ -> failwith "Error: DEBUG COLLECT ATTRIBUTES ID"
+							   end
 				| _ -> failwith (Printf.sprintf "Error: inalide attribute for natural join")
 		in
 		let column_list, att_env = collect_attributes_for_natural att_env ([] : string list) att_env in
@@ -793,7 +828,9 @@ and eval_projection r att_env proj =
 		| (s, attrib) :: next -> let split = String.split_on_char '.' s in
 								 match split with
 								 | table :: att :: [] ->
-					             [COLExpr(EXPRAttribute(table, att))] @ (collect_attributes next)
+					             	[COLExpr(EXPRAttribute(table, att))] @ (collect_attributes next)
+								 | att :: [] -> 
+								 	[COLExpr(EXPRId(att))] @ (collect_attributes next) 
 					             | _ -> failwith (Printf.sprintf "Error: invalide attribute")
 	in
 	let column_list = collect_attributes att_env in
@@ -817,7 +854,7 @@ and eval_column_extends r att_env col_list =
 								   | COLExpr(expr) -> 
 								   				(g', res_l @ [(domain_of_expression r att_env expr, eval_expression att_env expr)])
 								   | COLExprId(expr, s) -> 
-								   				(g' @ (Env.add s nb g'),
+								   				((Env.add s nb g'),
 												 res_l @ [(domain_of_expression r att_env expr, eval_expression att_env expr)])									   							
 							   end
 		| COLEXTMany(col, col_ext) -> 
@@ -834,7 +871,7 @@ and eval_column_extends r att_env col_list =
 					eval_column_extends_temp
 						att_env 
 						col_ext
-						(g' @ (Env.add s nb g'))
+						(Env.add s nb g')
 						(res_l @ [(domain_of_expression r att_env expr, eval_expression att_env expr)])
 						(nb + 1)
 			end
@@ -857,10 +894,8 @@ and eval_simple_query r_env squery =
 							  let res_eval_proj = eval_projection r att_env proj in
 							  begin
 							  match res_eval_proj with
-							  | (g', proj1) -> (
-							  		(R.projection proj1  (R.selection res_eval_cond r)),
-							  				  g'
-							  				  )
+							  | (g', proj1) -> 
+							  	    ((R.projection proj1 (R.selection res_eval_cond r)),  g')
 							  end
 	in
 	match squery with

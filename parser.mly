@@ -25,8 +25,12 @@
 
 /* ------------------ TO DO ------------------  */
 
-%left UNION EXCEPT
-%left INTERSECT
+%left UNION UNIONALL EXCEPT EXCEPTALL
+%left INTERSECT INTERSECTALL
+%nonassoc SQUERY
+%nonassoc QUERY
+%nonassoc EMPTY
+%nonassoc CROSSJOIN SRCCOMMA 
 %nonassoc CROSS FULL INNER JOIN LEFT OUTER RIGHT ASTERISK
 %nonassoc EQ NEQ LT GT LE GE
 %left PPIPE COMMA
@@ -43,18 +47,18 @@
 %%
 
 ansyn:
-	| PC ansyn { $2 } 
-	| query PC { $1 }
+	| PC ansyn    			 { $2 } 
+	| query PC  		     { $1 }
 ;
 
 query:
-	| simple_query                              { cst_querySimple $1 }
+	| simple_query          %prec SQUERY        { cst_querySimple $1 }
 	| query UNION query 						{ cst_queryUnion $1 $3 }
-	| query UNION ALL query 					{ cst_queryUnionAll $1 $4 }
+	| query UNION ALL query      %prec UNIONALL					{ cst_queryUnionAll $1 $4 }
 	| query EXCEPT query 						{ cst_queryExcept $1 $3 }
-	| query EXCEPT ALL query 					{ cst_queryExceptAll $1 $4 }
+	| query EXCEPT ALL query     %prec EXCEPTALL 					{ cst_queryExceptAll $1 $4 }
 	| query INTERSECT query 					{ cst_queryIntersect $1 $3 }
-	| query INTERSECT ALL query                 { cst_queryIntersectAll $1 $4 }   
+	| query INTERSECT ALL query  %prec INTERSECTALL                { cst_queryIntersectAll $1 $4 }   
 ;
 
 simple_query:
@@ -83,20 +87,20 @@ projection:
 source:
 	| ID 										{ cst_sourId $1 }
 	| LPAR query RPAR							{ cst_sourQuery $2 }
-	| source COMMA source						{ cst_sourComma $1 $3 }
-	| source CROSS JOIN source					{ cst_sourCrossJoin $1 $4 }
+	| source COMMA source				%prec SRCCOMMA		{ cst_sourComma $1 $3 }
+	| source CROSS JOIN source			%prec CROSSJOIN		{ cst_sourCrossJoin $1 $4 }
 	| source natural JOIN source ON condition 			{ cst_sourJoinOn $1 $2 (cst_join) $4 $6 }
-	| source natural INNER JOIN source ON condition		{ cst_sourJoinOn $1 $2 (cst_innerjoin) $5 $7 }
+	| source natural INNER JOIN source ON condition		 { cst_sourJoinOn $1 $2 (cst_innerjoin) $5 $7 }
 	| source natural RIGHT JOIN source ON condition			{ cst_sourJoinOn $1 $2 (cst_right) $5 $7 }
 	| source natural LEFT JOIN source ON condition			{ cst_sourJoinOn $1 $2 (cst_left) $5 $7 }
-	| source natural FULL JOIN source ON condition			{ cst_sourJoinOn $1 $2 (cst_full) $5 $7 }
+	| source natural FULL JOIN source ON condition		{ cst_sourJoinOn $1 $2 (cst_full) $5 $7 }
 	| source natural RIGHT OUTER JOIN source ON condition	{ cst_sourJoinOn $1 $2 (cst_outerright) $6 $8 }
-	| source natural LEFT OUTER JOIN source ON condition		{ cst_sourJoinOn $1 $2 (cst_outerleft) $6 $8 }
+	| source natural LEFT OUTER JOIN source ON condition 		{ cst_sourJoinOn $1 $2 (cst_outerleft) $6 $8 }
 	| source natural FULL OUTER JOIN source ON condition		{ cst_sourJoinOn $1 $2 (cst_outerfull) $6 $8 }
 ;
 
 natural:
-	|                                               { cst_noNatural }
+	|        			%prec EMPTY                                       { cst_noNatural }
 	| NATURAL                                       { cst_natural }
 
 condition:
@@ -127,6 +131,7 @@ predicate:
 ;
 
 expression:
+	| ID 															{ cst_exprId $1 }
 	| ID DOT ID 													{ cst_exprAttribute $1 $3 }
 	| LPAR expression RPAR											{ cst_exprPar $2 }
 	| INT 															{ cst_exprInt $1 }

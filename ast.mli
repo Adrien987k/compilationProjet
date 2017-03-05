@@ -18,6 +18,7 @@ type whenExprThen
 type whenCondThen
 type exprDate
 
+val cst_exprId: string -> expression
 val cst_exprAttribute: string -> string -> expression
 val cst_exprPar: expression -> expression
 val cst_exprInt: int -> expression
