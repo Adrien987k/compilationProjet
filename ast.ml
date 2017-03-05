@@ -461,23 +461,76 @@ let rec domain_of_expression r att_env expr = match expr with
 	| EXPRCaseCondElse(wct, expr1) ->  *)
 	
 
-let is_null env expr = match expr with
-	| EXPRAttribute(str1, str2) -> let attr1 = Env.find str1 env in
-								   let attr2 = Env.find str2 env in
-								   (match (attr1,attr2) with
-										| (Some(_),None) -> true 
-										| (Some(_),Some(a)) -> false
-										| (None,_) -> failwith "")
-	| _ -> failwith (Printf.sprintf "Error: syntax error : %s IS (NOT) NULL" (string_of_expression expr))
+let rec is_null att_env expr t = match expr with
+	| EXPRAttribute(str1, str2) -> let attr = str1 ^ "." ^ str2 in
+								   begin
+								   match Env.find attr att_env with
+										| Some(att) -> begin
+													   match R.attribute att t with
+													   | Some(v) -> false
+													   | None -> true
+													   end
+										| None -> 
+											failwith (Printf.sprintf "Error: unknown attribute: %s"
+																	  attr)
+								   end
+	| EXPRUpper(expr1) 
+	| EXPRLower(expr1) 
+	| EXPRUMinus(expr1) 
+	| EXPRPar(expr1) -> is_null att_env expr1 t
+	| EXPRInt(_) 
+	| EXPRFloat(_)
+	| EXPRString(_)
+	| EXPRDate(_)
+	| EXPRExtract(_, _) -> false 
+	| EXPRPlus(expr1, expr2) 
+	| EXPRAstrisk(expr1, expr2)
+	| EXPRSlash(expr1, expr2)  
+	| EXPRPPipe(expr1, expr2) 
+	| EXPRMinus(expr1, expr2) -> (is_null att_env expr1 t) || (is_null att_env expr2 t) 
+	| EXPRSubString(expr1, expr2, expr3) -> (is_null att_env expr1 t) 
+										 	|| (is_null att_env expr2 t)
+										 	|| (is_null att_env expr3 t)
+	(*
+	| EXPRCaseExpr(expr1, wet) -> 
+	| EXPRCaseExprElse(expr1, wet, expr2) -> 
+	| EXPRCaseCond(wct) -> 
+	| EXPRCaseCondElse(wct, expr1) ->
+	*)
 
-let is_not_null env expr = not (is_null env expr)
-(*
-let is_unknown env cond = match cond with
-	| CONDPred(pred1) -> *)
+let is_not_null att_env expr t = not (is_null att_env expr t)
 
-(* End of string_of section *)
+let rec is_unknown att_env cond = match cond with
+	| CONDPred(pred1) -> is_unknown_pred att_env pred1
+    | CONDAnd(cond1, cond2) -> (fun t -> not ((is_unknown att_env cond1) t)
+									     && not ((is_unknown att_env cond2) t))
+	| CONDOr(cond1, cond2) -> (fun t -> not ((is_unknown att_env cond1) t)
+									     || not ((is_unknown att_env cond2) t))
+	| CONDNotCond(cond1)
+	| CONDIsTrue(cond1)
+	| CONDIsNotTrue(cond1)
+	| CONDIsFalse(cond1)
+	| CONDIsNotFalse(cond1) -> is_unknown att_env cond1 
+	| CONDIsUnknown(cond1)
+	| CONDIsNotUnknown(cond1) -> (fun t -> false)
 
-let rec eval_condition att_env cond = match cond with
+and is_unknown_pred att_env pred = match pred with
+	| PREDCond(cond1) -> is_unknown att_env cond1
+	| PREDEq(expr1, expr2)
+	| PREDNeq(expr1, expr2) 
+	| PREDLt(expr1, expr2) 
+	| PREDLe(expr1, expr2) 
+	| PREDGt(expr1, expr2)
+	| PREDGe(expr1, expr2) -> (fun t -> (is_null att_env expr1 t) 
+									 || (is_null att_env expr2 t))
+	| PREDBetween(expr1, expr2, expr3)
+	| PREDNotBetween(expr1, expr2, expr3) -> (fun t -> (is_null att_env expr1 t) 
+													|| (is_null att_env expr2 t)
+													|| (is_null att_env expr3 t))
+	| PREDNull(expr1) -> (fun t -> false)
+	| PREDNotNull(expr1) -> (fun t -> false)
+
+and eval_condition att_env cond = match cond with
 	| CONDPred(pred1) -> eval_predicate att_env pred1
 	| CONDNotCond(cond1) -> (fun t -> not ((eval_condition att_env cond1) t))
     | CONDAnd(cond1, cond2) -> (fun t -> if (eval_condition att_env cond1) t 
@@ -489,9 +542,8 @@ let rec eval_condition att_env cond = match cond with
 	| CONDIsNotTrue(cond1) -> (fun t -> not ((eval_condition att_env cond1) t))
 	| CONDIsFalse(cond1) -> (fun t -> not ((eval_condition att_env cond1) t))
 	| CONDIsNotFalse(cond1) -> (fun t -> (eval_condition att_env cond1) t)
-	(* 
-	| CONDIsUnknown(cond1) -> 
-	| CONDIsNotUnknown(cond1) -> *)
+	| CONDIsUnknown(cond1) -> is_unknown att_env cond1
+	| CONDIsNotUnknown(cond1) -> (fun t -> not ((is_unknown att_env cond1) t))
 
 and eval_predicate att_env pred =
 	let eval_2expr expr1 expr2 op =
@@ -525,8 +577,8 @@ and eval_predicate att_env pred =
 	| PREDGe(expr1, expr2) -> eval_2expr expr1 expr2 ge
 	| PREDBetween(expr1, expr2, expr3) -> eval_3expr expr1 expr2 expr3 between
 	| PREDNotBetween(expr1, expr2, expr3) ->  eval_3expr expr1 expr2 expr3 not_between
-	| PREDNull(expr1) -> (fun t -> is_null att_env expr1)
-	| PREDNotNull(expr1) -> (fun t -> is_not_null att_env expr1)
+	| PREDNull(expr1) -> (fun t -> is_null att_env expr1 t)
+	| PREDNotNull(expr1) -> (fun t -> is_not_null att_env expr1 t)
 
 
 and eval_expression env expr = 
@@ -637,10 +689,9 @@ and eval_source r_env source =
 		let source2 = eval_source r_env s2 in
 		match source1, source2 with
 			| ((r1, g1), (r2, g2)) ->
-					let old_att_env = Env.union g1 g2 in
 					let g1, g2 = prepare_att_envs r1 r2 g1 g2 in
 					let att_env = Env.union g1 g2 in 
-					let pred_1tuple = eval_condition old_att_env cond in 
+					let pred_1tuple = eval_condition att_env cond in 
 					let pred_2tuple = (fun t1 t2 -> pred_1tuple (R.append t1 t2)) in
 					(join pred_2tuple r1 r2, att_env)
 	in

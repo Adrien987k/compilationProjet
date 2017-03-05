@@ -1,4 +1,12 @@
-SELECT vin.NVin, vin.Cru FROM vin ;
+SELECT vin.NVin, vin.Cru, vin.Millésime FROM vin ;
+
+SELECT * 
+FROM vin RIGHT OUTER JOIN commande ON vin.NVin = commande.NVin
+WHERE (vin.Millésime > 2000) IS UNKNOWN;
+
+-- SELECT vin.NVin AS nv, vin.Cru AS vc, vin.Millésime AS vm
+-- FROM vin
+-- WHERE vm > 2000;
 
 SELECT * FROM vin WHERE vin.Millésime > 2000
 UNION
