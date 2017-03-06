@@ -462,11 +462,14 @@ let rec domain_of_expression r att_env expr = match expr with
 											end
 	| EXPRDate(_) -> DDate
 	| EXPRExtract(_, _) -> DInt 
-	(*
-	| EXPRCaseExpr(expr1, wet) -> 
-	| EXPRCaseExprElse(expr1, wet, expr2) -> 
-	| EXPRCaseCond(wct) -> 
-	| EXPRCaseCondElse(wct, expr1) ->  *)
+	| EXPRCaseExpr(expr1, _)
+	| EXPRCaseExprElse(expr1, _, _)  
+	| EXPRCaseCondElse(_, expr1) -> domain_of_expression r att_env expr1
+	| EXPRCaseCond(wct) -> begin
+						   match wct with
+							| WHENCondThen(_, expr1)
+							| WHENCondThenExtends(_, expr1, _) -> domain_of_expression r att_env expr1
+						   end
 	
 
 let rec is_null att_env expr t = match expr with
@@ -661,10 +664,12 @@ and eval_expression att_env expr =
 											 | None -> eval_1expr expr2 (fun x -> x)
 											 | Some(expr') -> eval_1expr expr' (fun x -> x)
 											 end
-(*	
-	| EXPRCaseCond(wct) -> 
-	| EXPRCaseCondElse(wct, expr1) -> 
-*)
+	| EXPRCaseCond(wct) -> (fun t -> match (eval_whenCondExpr att_env wct) t with
+									 | Some(expr1) -> (eval_expression att_env expr1) t
+									 | None -> failwith "Error: case nether true")
+	| EXPRCaseCondElse(wct, expr1) -> (fun t -> match (eval_whenCondExpr att_env wct) t with
+									   | Some(expr1') -> (eval_expression att_env expr1') t
+									   | None -> (eval_expression att_env expr1) t)
 	| EXPRDate(ed) -> (fun t -> Some(VDate(eval_exprDate ed)))
 	| EXPRExtract(df, ed) -> (fun t -> Some(VInt(extract_date df (eval_exprDate ed))))
 
@@ -678,10 +683,13 @@ and eval_whenExprThen expr wet = match wet with
 												 then Some(expr2)
 												 else eval_whenExprThen expr wet'
 
-(*
-and eval_whenCondExpr wct = match wct with
-	| WHENCondThen(cond1, expr1) -> (eval_condition env cond1)
-	| WHENCondTHenExtends(cond1, expr1, wct') -> *)
+and eval_whenCondExpr att_env wct = match wct with
+	| WHENCondThen(cond1, expr1) -> (fun t -> if ((eval_condition att_env cond1) t) 
+											  then Some(expr1)
+											  else None )
+	| WHENCondThenExtends(cond1, expr1, wct') -> (fun t -> if ((eval_condition att_env cond1) t) 
+											  			   then Some(expr1)
+											  			   else (eval_whenCondExpr att_env wct') t)   
 
 and eval_source r_env source =
 	let rec rename g name = match g with
@@ -743,7 +751,6 @@ and eval_source r_env source =
 										then (collect_attributes_for_natural next att_l
 											  (Env.remove (table ^ "." ^ att) att_env_result)) 
 				 						else 
-				 						(* let _ = Printf.printf "%s " att in *)
 				 						let result =  (collect_attributes_for_natural next ([att] @ att_l) att_env_result) in
 				 						begin
 				 						match result with
