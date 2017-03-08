@@ -511,12 +511,10 @@ let rec is_null att_env expr t = match expr with
 	| EXPRSubString(expr1, expr2, expr3) -> (is_null att_env expr1 t) 
 										 	|| (is_null att_env expr2 t)
 										 	|| (is_null att_env expr3 t)
-	(*
-	| EXPRCaseExpr(expr1, wet) -> 
-	| EXPRCaseExprElse(expr1, wet, expr2) -> 
-	| EXPRCaseCond(wct) -> 
-	| EXPRCaseCondElse(wct, expr1) ->
-	*)
+	| EXPRCaseExpr(_, _)
+	| EXPRCaseExprElse(_, _, _)  
+	| EXPRCaseCond(_) 
+	| EXPRCaseCondElse(_, _) -> false
 
 let is_not_null att_env expr t = not (is_null att_env expr t)
 
@@ -654,16 +652,16 @@ and eval_expression att_env expr =
 	| EXPRSubString(expr1, expr2, expr3) -> eval_3expr expr1 expr2 expr3 sub_string 
 	| EXPRLower(expr1) -> eval_1expr expr1 lower 
 	| EXPRUpper(expr1) -> eval_1expr expr1 upper 
-	| EXPRCaseExpr(expr1, wet) -> begin
-									match eval_whenExprThen expr1 wet with
+	| EXPRCaseExpr(expr1, wet) -> (fun t -> 
+									match (eval_whenExprThen att_env expr1 wet) t with
 									| None -> failwith "Error: case nether match"
-									| Some(expr') -> eval_1expr expr' (fun x -> x)
-								  end
-	| EXPRCaseExprElse(expr1, wet, expr2) -> begin
-											 match eval_whenExprThen expr1 wet with
-											 | None -> eval_1expr expr2 (fun x -> x)
-											 | Some(expr') -> eval_1expr expr' (fun x -> x)
-											 end
+									| Some(expr') -> (eval_expression att_env expr') t
+								  )
+	| EXPRCaseExprElse(expr1, wet, expr2) -> (fun t -> 
+											 match (eval_whenExprThen att_env expr1 wet) t with
+											 | None -> (eval_expression att_env expr2) t
+											 | Some(expr') -> (eval_expression att_env expr') t
+											 )
 	| EXPRCaseCond(wct) -> (fun t -> match (eval_whenCondExpr att_env wct) t with
 									 | Some(expr1) -> (eval_expression att_env expr1) t
 									 | None -> failwith "Error: case nether true")
@@ -677,12 +675,26 @@ and eval_exprDate ed = match ed with
 	| DATEDate d -> d
 	| DATECurrent -> current_date
 
-and eval_whenExprThen expr wet = match wet with
-	| WHENExprThen(expr1, expr2) -> if expr = expr1 then Some(expr2) else None  
-	| WHENExprThenExtends(expr1, expr2, wet') -> if expr = expr1 
+and eval_whenExprThen att_env expr wet =
+	let eval_value expropt = match expropt with
+	| Some(expr') -> expr'
+	| None -> failwith "Error: unknown expression"
+	in 
+	match wet with
+	| WHENExprThen(expr1, expr2) -> (fun t -> 
+									if eq 
+									   (eval_value ((eval_expression att_env expr) t))
+									   (eval_value ((eval_expression att_env expr1) t)) 
+	                                then Some(expr2) 
+	                                else None 
+	                                ) 
+	| WHENExprThenExtends(expr1, expr2, wet') -> (fun t -> 
+												 if eq 
+												 (eval_value ((eval_expression att_env expr) t))
+												 (eval_value ((eval_expression att_env expr1) t))
 												 then Some(expr2)
-												 else eval_whenExprThen expr wet'
-
+												 else (eval_whenExprThen att_env expr wet') t
+												)
 and eval_whenCondExpr att_env wct = match wct with
 	| WHENCondThen(cond1, expr1) -> (fun t -> if ((eval_condition att_env cond1) t) 
 											  then Some(expr1)
@@ -756,7 +768,7 @@ and eval_source r_env source =
 				 						match result with
 				 						| (list, att_result') -> ([COLExpr(EXPRAttribute(table, att))] @ list, 
 				 												  att_result')
-				 						| _ -> failwith "Error: DEBUG COLLECT ATTRIBUTES"
+				 						(* | _ -> failwith "Error: DEBUG COLLECT ATTRIBUTES" *)
 				 					    end
 				| att :: [] -> if contains att_l att
 							   then (collect_attributes_for_natural next att_l
@@ -767,7 +779,7 @@ and eval_source r_env source =
 							   match result with
 							   | (list, att_result') -> ([COLExpr(EXPRId(att))] @ list,
 															 att_result')
-							   | _ -> failwith "Error: DEBUG COLLECT ATTRIBUTES ID"
+							   (* | _ -> failwith "Error: DEBUG COLLECT ATTRIBUTES ID" *)
 							   end
 				| _ -> failwith (Printf.sprintf "Error: inalide attribute for natural join")
 		in
