@@ -410,13 +410,31 @@ and string_of_predicate pred = match pred with
 	| PREDNotNull(expr1) -> Printf.sprintf "%s IS NOT NULL"
 													(string_of_expression expr1)
 
+let rec find_simple_attr att_env str = 													
+	let rec find_attr attr_env sattr =
+		match attr_env with
+		| [] -> None
+		| (sattr', attr') :: next ->
+			let split = String.split_on_char '.' sattr' in
+			match split with
+			| table :: attr'' :: [] -> if String.equal sattr attr''
+			  						   then Some(sattr')
+			  						   else find_attr next sattr
+			| _ -> failwith "Erreur invalide attribute" 
+    in
+	let attr_option = find_attr att_env str in
+	begin
+	match attr_option with
+	| None -> failwith (Printf.sprintf "Error: unknown attribute %s" str)
+	| Some att -> att
+    end
 
 let rec domain_of_expression r att_env expr = match expr with
-	| EXPRId(str) -> begin
-					 match Env.find str att_env with
-					 | Some(attr') -> R.domain r attr'
-					 | None -> failwith (Printf.sprintf "Error unknown attribute: %s" str)
-					 end
+	| EXPRId(str) ->  	 begin
+						 match Env.find (find_simple_attr att_env str) att_env with
+						 | Some(attr') -> R.domain r attr'
+						 | None -> failwith (Printf.sprintf "Error unknown attribute: %s" str)
+						 end
 	| EXPRAttribute(str1, str2) ->  let attr = str1 ^ "." ^ str2 in
 									begin
 						   			match Env.find attr att_env with
@@ -474,7 +492,7 @@ let rec domain_of_expression r att_env expr = match expr with
 
 let rec is_null att_env expr t = match expr with
 	| EXPRId(str) -> begin
-					 match Env.find str att_env with
+					 match Env.find (find_simple_attr att_env str) att_env with
 					 | Some(attr') -> begin
 					 				  match R.attribute attr' t with
 					 				  | Some(v) -> false
@@ -629,7 +647,7 @@ and eval_expression att_env expr =
 	in
     match expr with 
     | EXPRId(str) -> begin
-    				 match Env.find str att_env with
+    				 match Env.find (find_simple_attr att_env str) att_env with
     				 | Some(att) -> (fun t -> R.attribute att t)
     				 | None -> failwith (Printf.sprintf "Error: unknown attribute: %s" str)
     				 end
