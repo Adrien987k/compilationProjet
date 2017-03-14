@@ -58,7 +58,8 @@ and source =
 	| SOURQuery of query
 	| SOURComma of source * source
 	| SOURCrossJoin of source * source
-	| SOURJoinOn of source * natural * joinOp * source * condition
+	| SOURJoinOn of source * joinOp * source * condition
+	| SOURNatural of source * joinOp * source
 
 and joinOp =
 	| INNERJOIN
@@ -69,10 +70,6 @@ and joinOp =
 	| LEFT
 	| RIGHT
 	| FULL
-
-and natural =
-	| NONATURAL
-	| NATURAL
 
 and condition = 
 	| CONDPred of predicate
@@ -161,7 +158,8 @@ let cst_sourId s = SOURID(s)
 let cst_sourQuery sq = SOURQuery(sq)
 let cst_sourComma s1 s2 = SOURComma(s1, s2)
 let cst_sourCrossJoin s1 s2 = SOURCrossJoin(s1, s2)
-let cst_sourJoinOn s1 nat op s2 c = SOURJoinOn(s1, nat, op, s2, c)
+let cst_sourJoinOn s1 op s2 c = SOURJoinOn(s1, op, s2, c)
+let cst_sourNaturalJoin s1 op s2 = SOURNatural(s1, op, s2)
 
 let cst_innerjoin = INNERJOIN
 let cst_join = JOIN
@@ -171,9 +169,6 @@ let cst_outerfull = OUTERFULL
 let cst_right = LEFT
 let cst_left = RIGHT
 let cst_full = FULL
-
-let cst_noNatural = NONATURAL
-let cst_natural = NATURAL
 
 let cst_condPred p = CONDPred(p)
 let cst_condNotCond c = CONDNotCond(c)
@@ -345,12 +340,16 @@ and string_of_source source = match source with
 	| SOURCrossJoin(src1, src2) -> Printf.sprintf "%s CROSS JOIN %s" 
 													   (string_of_source src1)
 													   (string_of_source src2)
-	| SOURJoinOn(src1, natural, join, src2, cond) -> Printf.sprintf "%s%s%s %s ON %s"
+	| SOURJoinOn(src1, join, src2, cond) -> Printf.sprintf "%s %s %s ON %s"
 													 (string_of_source src1)
-													 (string_of_natural natural)
 													 (string_of_joinOp join)
 													 (string_of_source src2)
 													 (string_of_condition cond)
+    | SOURNatural(src1, join, src2) -> Printf.sprintf "%s %s %s"
+    										(string_of_source src1)
+    										(string_of_joinOp join)
+    										(string_of_source src2)
+
 
 and string_of_joinOp join = match join with
 	| INNERJOIN -> "INNER JOIN"
@@ -361,12 +360,6 @@ and string_of_joinOp join = match join with
 	| LEFT -> "LEFT JOIN"
 	| RIGHT -> "RIGHT JOIN"
 	| FULL -> "FULL JOIN"
-
-
-and string_of_natural natural = match natural with
-	| NONATURAL -> " "
-	| NATURAL -> " NATURAL "
-
 
 and string_of_condition cond = match cond with
 	| CONDPred(pred1) -> string_of_predicate pred1
@@ -655,7 +648,7 @@ and eval_expression att_env expr =
 								   begin
 								   match Env.find attr att_env with
 									| Some(att) -> (fun t -> R.attribute att t)
-									| None -> failwith (Printf.sprintf "Error: unknown attribute: %s" attr)   
+									| None -> failwith (Printf.sprintf "Error: unknown attribute ici: %s" attr)   
 								   end
 	| EXPRPar(expr1) -> eval_expression att_env expr1
 	| EXPRInt(i) -> (fun t -> Some(VInt(i)))
@@ -757,11 +750,28 @@ and eval_source r_env source =
 					let pred_2tuple = (fun t1 t2 -> pred_1tuple (R.append t1 t2)) in
 					(join pred_2tuple r1 r2, att_env)
 	in
-	let rec contains l v = 
-		match l with
-		| [] -> false
-		| h :: q -> if h = v then true else contains q v
+	let rec construct_condition_for_natural att_env att_l cond =
+			let rec contains_simple_att l v = 
+				match l with
+				| [] -> (false, "", "") 
+				| (table, att) :: next -> if att = v 
+									  then (true, table, att)
+									  else contains_simple_att next v
+			in
+			match att_env with
+			 | [] -> cond
+			 | (s, attr) :: next ->
+			 	match String.split_on_char '.' s with
+			 	| table :: sattr :: [] -> let contains, res_table, res_sattr = contains_simple_att att_l sattr in   
+			 							  if contains
+			 							  then construct_condition_for_natural 
+			 							  	   next att_l (CONDAnd(cond, CONDPred(PREDEq(
+			 							  	   								EXPRAttribute(table, sattr), 
+			 							  	   								EXPRAttribute(res_table, res_sattr)))))
+			 							  else construct_condition_for_natural
+			 							  	   next ([table, sattr] @ att_l) cond
 	in
+	(*
 	let eval_proj_for_natural r att_env =
 	(*	
 	    let rec display env = 
@@ -770,7 +780,7 @@ and eval_source r_env source =
 	    | (s, att) :: next -> Printf.printf "%s " s; display next
 	    in
 		let _ =  display att_env in
-	*)
+	*)	
 		let rec collect_attributes_for_natural att_env_init att_l att_env_result = 
 			match att_env_init with
 			| [] -> ([], att_env_result)
@@ -812,6 +822,7 @@ and eval_source r_env source =
 		let proj_for_natural = PROJColumns(col_extends_calculated_with_env) in
 		(eval_projection r att_env proj_for_natural, att_env)
 	in
+*)
 	match source with
 	| SOURID(str1) -> begin match Env.find str1 r_env with
 						| None -> failwith (Printf.sprintf "Error: unknown source : %s" str1)
@@ -823,28 +834,7 @@ and eval_source r_env source =
 	| SOURQuery(query) -> eval_query r_env query
 	| SOURComma(src1, src2)
 	| SOURCrossJoin(src1, src2) -> join_app src1 src2 R.crossjoin
-	| SOURJoinOn(src1, natural, join, src2, cond) ->
-		let is_natural = begin match natural with | NONATURAL -> false | NATURAL -> true end in
-		if is_natural 
-		then
-		begin
-		match join with
-			| JOIN  
-			| INNERJOIN -> begin match join_app_cond cond src1 src2 R.innerjoin with
-								 | (r, att_env) -> let res_proj, att_env = eval_proj_for_natural r att_env in
-								 				   begin
-								 				   match res_proj with
-								 				   | (att_env', proj) -> ((R.projection proj r), att_env')
-								 				   end
-						   end	 				   
-			| LEFT 
-			| OUTERLEFT -> join_app_cond cond src1 src2 R.leftouterjoin
-			| FULL 
-			| OUTERFULL -> join_app_cond cond src1 src2 R.fullouterjoin 
-			| RIGHT
-			| OUTERRIGHT ->  join_app_cond cond src2 src1 R.leftouterjoin
-		end
-		else 
+	| SOURJoinOn(src1, join, src2, cond) ->
 		begin
 		match join with
 			| JOIN  
@@ -854,8 +844,31 @@ and eval_source r_env source =
 			| FULL 
 			| OUTERFULL -> join_app_cond cond src1 src2 R.fullouterjoin 
 			| RIGHT
-			| OUTERRIGHT ->  join_app_cond cond src2 src1 R.leftouterjoin
+			| OUTERRIGHT -> join_app_cond cond src2 src1 R.leftouterjoin
 		end
+	| SOURNatural(src1, join, src2) ->
+		let source1 = eval_source r_env src1 in
+		let source2 = eval_source r_env src2 in
+		match source1, source2 with
+			| ((r1, g1), (r2, g2)) ->
+					let g1, g2 = prepare_att_envs r1 r2 g1 g2 in
+					let att_env = Env.union g1 g2 in  
+		begin
+		match join with
+			| JOIN  
+			| INNERJOIN -> join_app_cond
+						   (construct_condition_for_natural att_env [] (CONDPred(PREDEq(EXPRInt(0), EXPRInt(0)))))
+						   src1 src2 R.innerjoin 	 				   
+			(*
+			| LEFT 
+			| OUTERLEFT -> join_app_cond cond src1 src2 R.leftouterjoin 
+			| FULL 
+			| OUTERFULL -> join_app_cond cond src1 src2 R.fullouterjoin 
+			| RIGHT
+			| OUTERRIGHT ->  join_app_cond cond src2 src1 R.leftouterjoin
+		*)
+		end
+		
 
 
 and eval_projection r att_env proj =
