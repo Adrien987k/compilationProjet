@@ -1,5 +1,4 @@
 
-
 SELECT NVin
 FROM vin NATURAL INNER JOIN commande;
 

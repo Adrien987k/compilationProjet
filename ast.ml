@@ -868,11 +868,11 @@ and eval_source r_env source =
 			| JOIN  
 			| INNERJOIN -> join_app_cond
 						   (construct_condition_for_natural att_env [] true_predicate)
-						   src1 src2 R.innerjoin 	 				   
+						   src1 src2 R.innerjoin  				   
 			| LEFT 
 			| OUTERLEFT -> join_app_cond 
 						   (construct_condition_for_natural att_env [] true_predicate)
-						   src1 src2 R.leftouterjoin 
+						   src1 src2 R.leftouterjoin 	 	 				   
 			| FULL 
 			| OUTERFULL -> join_app_cond
 			               (construct_condition_for_natural att_env [] true_predicate)
