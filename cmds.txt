@@ -1,5 +1,7 @@
 
-SELECT NVin
+SELECT * FROM vin INNER JOIN commande ON vin.NVin = commande.NVin ;
+
+SELECT *
 FROM vin NATURAL INNER JOIN commande;
 
 SELECT * 

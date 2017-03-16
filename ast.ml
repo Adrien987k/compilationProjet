@@ -745,7 +745,7 @@ and eval_source r_env source =
 		match source1, source2 with
 			| ((r1, g1), (r2, g2)) ->
 					let g1, g2 = prepare_att_envs r1 r2 g1 g2 in
-					let att_env = Env.union g1 g2 in 
+					let att_env = Env.union g1 g2 in
 					let pred_1tuple = eval_condition att_env cond in 
 					let pred_2tuple = (fun t1 t2 -> pred_1tuple (R.append t1 t2)) in
 					(join pred_2tuple r1 r2, att_env)
@@ -780,7 +780,7 @@ and eval_source r_env source =
 			 					 	  next (["", sattr] @ att_l) cond
 			| _ -> failwith (Printf.sprintf "Error: inalide attribute for natural join")
 	in
-	(*
+	
 	let eval_proj_for_natural r att_env =
 	(*	
 	    let rec display env = 
@@ -789,49 +789,55 @@ and eval_source r_env source =
 	    | (s, att) :: next -> Printf.printf "%s " s; display next
 	    in
 		let _ =  display att_env in
-	*)	
-		let rec collect_attributes_for_natural att_env_init att_l att_env_result = 
+	*)	let rec contains l v = 
+		  match l with
+		  | [] -> false
+		  | h :: q -> if h = v then true else contains q v
+	    in
+		let rec reatribute_number_since old_att_env since =
+			match old_att_env with
+			| [] -> old_att_env
+			| (s, attr) :: next -> if attr > since
+								   then (s, (attr - 1)) :: (reatribute_number_since next since)
+								   else (s, attr) :: (reatribute_number_since next since)
+		in
+		let rec collect_attributes_for_natural att_env_init att_l att_env_result r = 
 			match att_env_init with
 			| [] -> ([], att_env_result)
 			| (s, attrib) :: next -> 
 				let split = String.split_on_char '.' s in
 				match split with
 				| table :: att :: [] -> if contains att_l att 
-										then (collect_attributes_for_natural next att_l
-											  (Env.remove (table ^ "." ^ att) att_env_result)) 
+										then  let new_env = (Env.remove (table ^ "." ^ att) att_env_result) in
+											  let new_env = reatribute_number_since new_env attrib in 
+											  (collect_attributes_for_natural next att_l new_env r) 
 				 						else 
-				 						let result =  (collect_attributes_for_natural next ([att] @ att_l) att_env_result) in
+				 						let result = (collect_attributes_for_natural next ([att] @ att_l) att_env_result) r in
 				 						begin
 				 						match result with
-				 						| (list, att_result') -> ([COLExpr(EXPRAttribute(table, att))] @ list, 
+				 						| (list, att_result') ->  let expr = EXPRAttribute(table, att) in
+				 												  let eval_expr = eval_expression att_env expr in
+				 												  let domain = domain_of_expression r att_env expr in 
+				 												  ([(domain, eval_expr)] @ list, 
 				 												  att_result')
-				 						(* | _ -> failwith "Error: DEBUG COLLECT ATTRIBUTES" *)
 				 					    end
 				| att :: [] -> if contains att_l att
 							   then (collect_attributes_for_natural next att_l
-							   		 (Env.remove att att_env_result))
+							   		 (Env.remove att att_env_result) r)
 							   else  
-							   let result = (collect_attributes_for_natural next ([att] @ att_l) att_env_result) in
+							   let result = (collect_attributes_for_natural next ([att] @ att_l) att_env_result) r in
 							   begin
 							   match result with
-							   | (list, att_result') -> ([COLExpr(EXPRId(att))] @ list,
+							   | (list, att_result') -> let expr = EXPRId(att) in
+				 									    let eval_expr = eval_expression att_env expr in
+				 										let domain = domain_of_expression r att_env expr in
+							   							([(domain, eval_expr)] @ list,
 															 att_result')
-							   (* | _ -> failwith "Error: DEBUG COLLECT ATTRIBUTES ID" *)
 							   end
 				| _ -> failwith (Printf.sprintf "Error: inalide attribute for natural join")
 		in
-		let column_list, att_env = collect_attributes_for_natural att_env ([] : string list) att_env in
-		let rec transform_col_list_in_colExt col_list = 
-			match col_list with
-			| [] -> failwith "Error: No attribute found for natural join"
-			| col :: [] -> COLEXTSingle(col)
-			| col :: next -> COLEXTMany(col, transform_col_list_in_colExt next)
-		in
-		let col_extends_calculated_with_env = transform_col_list_in_colExt column_list in
-		let proj_for_natural = PROJColumns(col_extends_calculated_with_env) in
-		(eval_projection r att_env proj_for_natural, att_env)
+		collect_attributes_for_natural att_env ([] : string list) att_env r
 	in
-*)
 	match source with
 	| SOURID(str1) -> begin match Env.find str1 r_env with
 						| None -> failwith (Printf.sprintf "Error: unknown source : %s" str1)
@@ -866,9 +872,17 @@ and eval_source r_env source =
 		begin
 		match join with
 			| JOIN  
-			| INNERJOIN -> join_app_cond
+			| INNERJOIN -> begin
+							match join_app_cond
 						   (construct_condition_for_natural att_env [] true_predicate)
-						   src1 src2 R.innerjoin  				   
+						   src1 src2 R.innerjoin with
+						   | (r, att_env) -> let res_eval_proj = eval_proj_for_natural r att_env in
+						   					 begin 
+						   					 match res_eval_proj with
+						   					 | (list_dom_exrp, new_att_env) ->   
+						   					 		(R.projection list_dom_exrp r, new_att_env)
+						   					 end
+						   end  				   
 			| LEFT 
 			| OUTERLEFT -> join_app_cond 
 						   (construct_condition_for_natural att_env [] true_predicate)
