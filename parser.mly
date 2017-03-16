@@ -94,13 +94,8 @@ source:
 	| LPAR query RPAR							            { cst_sourQuery $2 }
 	| source COMMA source				%prec SRCCOMMA		{ cst_sourComma $1 $3 }
 	| source CROSS JOIN source			%prec CROSSJOIN		{ cst_sourCrossJoin $1 $4 }
-<<<<<<< HEAD
 	| source joinOp source ON condition %prec JOINON        { cst_sourJoinOn $1 $2 $3 $5 }
 	| source NATURAL joinOp source      %prec NATJOIN       { cst_sourNaturalJoin $1 $3 $4 }
-=======
-	| source joinOp source ON condition 			        { cst_sourJoinOn $1 $2 $3 $5 }
-	| source NATURAL joinOp source                          { cst_sourNaturalJoin $1 $3 $4 }
->>>>>>> 443f550ea2f614af10c008c8d6f0caa4f4d2995d
 ;
 
 joinOp:
