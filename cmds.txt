@@ -1,5 +1,10 @@
-SELECT vin.NVin, vin.Cru, commande.NVin, commande.NCom
-FROM vin NATURAL INNER JOIN viticulteur ON 5 = 5;
+
+
+SELECT NVin
+FROM vin NATURAL INNER JOIN commande;
+
+SELECT * 
+FROM vin, commande;
 
 SELECT vin.NVin, vin.Cru, vin.Millésime FROM vin ;
 

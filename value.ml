@@ -145,21 +145,22 @@ let sub_string s i1 i2 =
                                   (string_of_value i2)
                                   (string_of_value i1))
 
-let app_bool v1 v2 e op_i op_f op_date = match (v1, v2) with
+let app_bool v1 v2 e op_i op_f op_s op_date = match (v1, v2) with
   | VInt i1, VInt i2 -> op_i i1 i2
   | VInt i1, VFloat f1 -> op_f (float_of_int i1) f1
   | VFloat f1, VInt i1 -> op_f f1 (float_of_int i1)
   | VFloat f1, VFloat f2 -> op_f f1 f2
+  | VVChar s1, VVChar s2 -> op_s s1 s2
   | VDate d1, VDate d2 -> op_date d1 d2
   | _ -> failwith (Printf.sprintf "Error: try to compare values %s %s with %s"
                                     (string_of_value v1) (string_of_value v2) e)
 
-let eq v1 v2 = app_bool v1 v2 ("=") (=) (=) eq_date
-let neq v1 v2 = app_bool v1 v2 ("<>") (<>) (<>) neq_date
-let lt v1 v2 = app_bool v1 v2 ("<") (<) (<) lt_date
-let le v1 v2 = app_bool v1 v2 ("<=") (>=) (>=) le_date
-let gt v1 v2 = app_bool v1 v2 (">") (>) (>) gt_date
-let ge v1 v2 = app_bool v1 v2 (">=") (>=) (>=) ge_date
+let eq v1 v2 = app_bool v1 v2 ("=") (=) (=) (String.equal) eq_date
+let neq v1 v2 = app_bool v1 v2 ("<>") (<>) (<>) (fun s1 s2 -> not (String.equal s1 s2)) neq_date
+let lt v1 v2 = app_bool v1 v2 ("<") (<) (<) (fun s1 s2 -> (String.compare s1 s2) < 0) lt_date
+let le v1 v2 = app_bool v1 v2 ("<=") (>=) (>=) (fun s1 s2 -> (String.compare s1 s2) <= 0) le_date
+let gt v1 v2 = app_bool v1 v2 (">") (>) (>) (fun s1 s2 -> (String.compare s1 s2) > 0) gt_date
+let ge v1 v2 = app_bool v1 v2 (">=") (>=) (>=) (fun s1 s2 -> (String.compare s1 s2) <= 0) ge_date
 
 let between v1 v2 v3 = match (v1, v2, v3) with
   | VInt i1, VInt i2, VInt i3 -> (i1 >= i2) && (i1 <= i3)

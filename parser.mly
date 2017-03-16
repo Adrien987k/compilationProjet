@@ -31,6 +31,9 @@
 %nonassoc QUERY
 %nonassoc EMPTY
 %nonassoc CROSSJOIN SRCCOMMA 
+%nonassoc JOINON
+%nonassoc NATJOIN
+%nonassoc NATURAL
 %nonassoc CROSS FULL INNER JOIN LEFT OUTER RIGHT 
 %nonassoc EQ NEQ LT GT LE GE
 %left PPIPE COMMA
@@ -87,23 +90,23 @@ projection:
 ;
 
 source:
-	| ID 										{ cst_sourId $1 }
-	| LPAR query RPAR							{ cst_sourQuery $2 }
+	| ID 										            { cst_sourId $1 }
+	| LPAR query RPAR							            { cst_sourQuery $2 }
 	| source COMMA source				%prec SRCCOMMA		{ cst_sourComma $1 $3 }
 	| source CROSS JOIN source			%prec CROSSJOIN		{ cst_sourCrossJoin $1 $4 }
-	| source natural JOIN source ON condition 			{ cst_sourJoinOn $1 $2 (cst_join) $4 $6 }
-	| source natural INNER JOIN source ON condition		 { cst_sourJoinOn $1 $2 (cst_innerjoin) $5 $7 }
-	| source natural RIGHT JOIN source ON condition			{ cst_sourJoinOn $1 $2 (cst_right) $5 $7 }
-	| source natural LEFT JOIN source ON condition			{ cst_sourJoinOn $1 $2 (cst_left) $5 $7 }
-	| source natural FULL JOIN source ON condition		{ cst_sourJoinOn $1 $2 (cst_full) $5 $7 }
-	| source natural RIGHT OUTER JOIN source ON condition	{ cst_sourJoinOn $1 $2 (cst_outerright) $6 $8 }
-	| source natural LEFT OUTER JOIN source ON condition 		{ cst_sourJoinOn $1 $2 (cst_outerleft) $6 $8 }
-	| source natural FULL OUTER JOIN source ON condition		{ cst_sourJoinOn $1 $2 (cst_outerfull) $6 $8 }
+	| source joinOp source ON condition %prec JOINON        { cst_sourJoinOn $1 $2 $3 $5 }
+	| source NATURAL joinOp source      %prec NATJOIN       { cst_sourNaturalJoin $1 $3 $4 }
 ;
 
-natural:
-	|        			%prec EMPTY                                       { cst_noNatural }
-	| NATURAL                                       { cst_natural }
+joinOp:
+	| JOIN                          { cst_join }
+	| INNER JOIN                    { cst_innerjoin }
+	| RIGHT JOIN                    { cst_right }
+	| LEFT JOIN                     { cst_left }
+	| FULL JOIN                     { cst_full }
+	| RIGHT OUTER JOIN              { cst_outerright }
+	| LEFT OUTER JOIN               { cst_outerleft }
+	| FULL OUTER JOIN               { cst_outerfull }
 
 condition:
 	| predicate 						{ cst_condPred $1 }
