@@ -865,6 +865,19 @@ and eval_source r_env source =
 		let source1 = eval_source r_env src1 in
 		let source2 = eval_source r_env src2 in
 		let true_predicate = (CONDPred(PREDEq(EXPRInt(0), EXPRInt(0)))) in
+		let do_projection att_env rjoin = 
+		    begin
+		    match join_app_cond
+		    (construct_condition_for_natural att_env [] true_predicate)
+		    src1 src2 rjoin with
+		    | (r, att_env) -> let res_eval_proj = eval_proj_for_natural r att_env in
+		   					 begin 
+		   					 match res_eval_proj with
+		   					 | (list_dom_exrp, new_att_env) ->   
+		   					 		(R.projection list_dom_exrp r, new_att_env)
+		   					 end
+		   end
+		in
 		match source1, source2 with
 			| ((r1, g1), (r2, g2)) ->
 					let g1, g2 = prepare_att_envs r1 r2 g1 g2 in
@@ -872,29 +885,13 @@ and eval_source r_env source =
 		begin
 		match join with
 			| JOIN  
-			| INNERJOIN -> begin
-							match join_app_cond
-						   (construct_condition_for_natural att_env [] true_predicate)
-						   src1 src2 R.innerjoin with
-						   | (r, att_env) -> let res_eval_proj = eval_proj_for_natural r att_env in
-						   					 begin 
-						   					 match res_eval_proj with
-						   					 | (list_dom_exrp, new_att_env) ->   
-						   					 		(R.projection list_dom_exrp r, new_att_env)
-						   					 end
-						   end  				   
+			| INNERJOIN -> do_projection att_env R.innerjoin  				   
 			| LEFT 
-			| OUTERLEFT -> join_app_cond 
-						   (construct_condition_for_natural att_env [] true_predicate)
-						   src1 src2 R.leftouterjoin 	 	 				   
+			| OUTERLEFT -> do_projection att_env R.leftouterjoin 	 	 				   
 			| FULL 
-			| OUTERFULL -> join_app_cond
-			               (construct_condition_for_natural att_env [] true_predicate)
-			               src1 src2 R.fullouterjoin 
+			| OUTERFULL -> do_projection att_env R.fullouterjoin 
 			| RIGHT
-			| OUTERRIGHT -> join_app_cond 
-							(construct_condition_for_natural att_env [] true_predicate)
-						    src2 src1 R.leftouterjoin
+			| OUTERRIGHT -> do_projection att_env R.leftouterjoin
 		end
 		
 
