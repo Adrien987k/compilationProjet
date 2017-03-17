@@ -47,3 +47,7 @@ WHERE EXTRACT(MONTH FROM DATE '1996-10-24') > EXTRACT(DAY FROM CURRENT_DATE) ;
 SELECT * FROM vin, commande ;
 
 SELECT * FROM vin INNER JOIN commande ON vin.NVin = commande.NVin ;
+
+SELECT * FROM vin;
+
+SELECT * FROM vin WHERE Région IS NULL;

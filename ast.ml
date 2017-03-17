@@ -487,6 +487,10 @@ let rec domain_of_expression r att_env expr = match expr with
 						   end
 	
 
+let rec is_null att_env expr t = match ((eval_expression att_env expr) t) with
+								 | Some(v) -> (match v with | NULL -> true | _ -> false)   
+								 | None -> true
+(* 
 let rec is_null att_env expr t = match expr with
 	| EXPRId(str) -> begin
 					 match Env.find (find_simple_attr att_env str) att_env with
@@ -530,10 +534,11 @@ let rec is_null att_env expr t = match expr with
 	| EXPRCaseExprElse(_, _, _)  
 	| EXPRCaseCond(_) 
 	| EXPRCaseCondElse(_, _) -> false
+*)
 
-let is_not_null att_env expr t = not (is_null att_env expr t)
+and is_not_null att_env expr t = not (is_null att_env expr t)
 
-let rec is_unknown att_env cond = match cond with
+and is_unknown att_env cond = match cond with
 	| CONDPred(pred1) -> is_unknown_pred att_env pred1
     | CONDAnd(cond1, cond2) -> (fun t -> not ((is_unknown att_env cond1) t)
 									     && not ((is_unknown att_env cond2) t))
@@ -582,22 +587,22 @@ and eval_predicate att_env pred =
 	let eval_2expr expr1 expr2 op =
 		(fun t -> op  
 		(match (eval_expression att_env expr1) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v1) -> v1)
 		(match (eval_expression att_env expr2) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v2) -> v2))
 	in  
 	let eval_3expr expr1 expr2 expr3 op =
 		(fun t -> op  
 		(match (eval_expression att_env expr1) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v1) -> v1)
 		(match (eval_expression att_env expr2) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v2) -> v2)
 		(match (eval_expression att_env expr3) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v3) -> v3))
 	in
 	match pred with
@@ -618,28 +623,28 @@ and eval_expression att_env expr =
 	let eval_1expr expr1 op = 
 		(fun t -> Some(op
 		(match (eval_expression att_env expr1) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v1) -> v1)))
 	in
 	let eval_2expr expr1 expr2 op =
 		(fun t -> Some(op  
 		(match (eval_expression att_env expr1) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v1) -> v1)
 		(match (eval_expression att_env expr2) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v2) -> v2)))
 	in  
 	let eval_3expr expr1 expr2 expr3 op =
 		(fun t -> Some(op  
 		(match (eval_expression att_env expr1) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v1) -> v1)
 		(match (eval_expression att_env expr2) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v2) -> v2)
 		(match (eval_expression att_env expr3) t with
-		| None -> failwith "Error: Syntax error"
+		| None -> NULL
 		| Some(v3) -> v3)))
 	in
     match expr with 
@@ -657,7 +662,7 @@ and eval_expression att_env expr =
 	| EXPRPar(expr1) -> eval_expression att_env expr1
 	| EXPRInt(i) -> (fun t -> Some(VInt(i)))
 	| EXPRFloat(f) -> (fun t -> Some(VFloat(f)))
-	| EXPRString(s) -> (fun t -> Some(VVChar(s)))
+	| EXPRString(s) -> (fun t -> if s = "" then Some(NULL) else Some(VVChar(s)))
 	| EXPRPlus(expr1, expr2) -> eval_2expr expr1 expr2 add
 	| EXPRMinus(expr1, expr2) -> eval_2expr expr1 expr2 sub 
 	| EXPRAstrisk(expr1, expr2) -> eval_2expr expr1 expr2 mul

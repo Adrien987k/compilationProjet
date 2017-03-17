@@ -15,6 +15,7 @@ type domain =
   | DDate
 
 type value =
+  | NULL
   | VInt   of int
   | VFloat of float
   | VVChar of string
@@ -40,22 +41,24 @@ let string_of_domain d =
 
 let value_of_string d =
   match d with
-  | DInt -> (fun s -> VInt (int_of_string s))
-  | DFloat -> (fun s -> VFloat (float_of_string s))
-  | DVChar -> (fun s -> VVChar s)
-  | DDate -> (fun s -> VDate(date_of_string s))
+  | DInt -> (fun s -> if s = "" then NULL else VInt (int_of_string s))
+  | DFloat -> (fun s -> if s = "" then NULL else VFloat (float_of_string s))
+  | DVChar -> (fun s -> if s = "" then NULL else VVChar s)
+  | DDate -> (fun s -> if s = "" then NULL else VDate(date_of_string s))
 
 let string_of_value v =
   match v with
+  | NULL -> "NULL"
   | VInt i -> string_of_int i
   | VFloat f -> string_of_float f
-  | VVChar s -> s
+  | VVChar s -> if s = "" then "NULL" else s
   | VDate d -> string_of_date d
 
 (* Fonctions de conversion et de vérification d'appartenance d'une valeur à un domaine *)
 
 let domain_of_value v =
   match v with
+  | NULL -> failwith "Error: cannot evaluate domain of NULL"
   | VInt _ -> DInt
   | VFloat _ -> DFloat
   | VVChar _ -> DVChar
@@ -76,24 +79,28 @@ let to_domain d =
     | VFloat f -> VInt (int_of_float f)
     | VVChar s -> (try VInt (int_of_string s) with Failure _ -> VInt 0)
     | VDate d -> failwith "Cannot convert DATE to INT"
+    | NULL -> NULL
   )
   | DFloat -> (function
     | VInt i -> VFloat (float_of_int i)
     | VFloat f -> VFloat f
     | VVChar s -> (try VFloat (float_of_string s) with Failure _ -> VFloat 0.)
     | VDate _ -> failwith "Cannot convert DATE to FLOAT"
+    | NULL -> NULL
   )
   | DVChar -> (function
     | VInt i -> VVChar (string_of_int i)
     | VFloat f -> VVChar (string_of_float f)
     | VVChar s -> VVChar s
     | VDate d -> VVChar(string_of_date d)
+    | NULL -> NULL
   )
   | DDate -> (function
     | VInt _ -> failwith "Cannot convert INT to DATE"
     | VFloat _ -> failwith "Cannot convert FLOAT to DATE"
     | VVChar s -> VDate(date_of_string s)
     | VDate d -> VDate d 
+    | NULL -> NULL
   )
 
 (* Fonction spécifique de manipulation des valeurs (comparaison, addition, concaténation, etc.) *)
@@ -104,7 +111,9 @@ let app_arithm v1 v2 op_name op1 op2 =
 	| VInt i1, VFloat f1 -> VFloat(op2 (float_of_int i1) f1)
   | VFloat f1, VInt i1 -> VFloat(op2  f1 (float_of_int i1))
 	| VFloat f1, VFloat f2 -> VFloat (op2 f1 f2)
-	| _ -> failwith (Printf.sprintf "Error: invalid operation '%s %s %s'" 
+  | NULL, _
+  | _, NULL -> NULL
+  | _ -> failwith (Printf.sprintf "Error: invalid operation '%s %s %s'" 
                                   (string_of_value v1)
                                   (op_name) 
                                   (string_of_value v2))
@@ -126,6 +135,8 @@ let concat v1 v2 =
   | VFloat f , VVChar s1 -> failwith (Printf.sprintf "Error: concat: '%s || %s' Try to invert the order."
                                                      (string_of_value v1)
                                                      (string_of_value v2))
+  | NULL, _ 
+  | _, NULL -> NULL
   | _ -> failwith (Printf.sprintf "Error: concat: '%s || %s'" (string_of_value v1) (string_of_value v2))
 
 let app_string s1 f e =
