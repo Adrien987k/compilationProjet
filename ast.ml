@@ -252,9 +252,6 @@ and string_of_simple_query squery = match squery with
 													   (string_of_source src)
 													   (string_of_condition cond)
 
-
-(* string_of section *)
-
 and string_of_projection proj = match proj with
 	| PROJAsterisk -> "*"
 	| PROJColumns(col_extends) -> string_of_column_extends col_extends
@@ -447,29 +444,36 @@ let rec domain_of_expression r att_env expr = match expr with
 								 | (DInt, DFloat) -> DFloat
 								 | (DFloat, DInt) -> DFloat
 								 | (DFloat, DFloat) -> DFloat
-								 | _ -> failwith ""
+								 | _ -> failwith (Printf.sprintf "Error: incompatible operation between %s and %s"
+												  (string_of_expression expr1) (string_of_expression expr2))
 							     end 
 	| EXPRUMinus(expr1) -> begin
 						   match (domain_of_expression r att_env expr1) with
 						   | DInt -> DInt
 						   | DFloat -> DFloat
-						   | DVChar -> failwith ""
-						   | _ -> failwith ""
+						   | _ -> failwith (Printf.sprintf "Error: cannot apply (-) to %s" (string_of_expression expr1))
 						   end
 	| EXPRString(_) -> DVChar
 	| EXPRPPipe(expr1, expr2) -> begin
 								 match (domain_of_expression r att_env expr1, domain_of_expression r att_env expr2) with
 								 | (DVChar, _) -> DVChar
-								 | _ -> failwith ""
+								 | _ -> failwith (Printf.sprintf "Error: cannot apply ||, %s or %s is not a VARCHAR"
+													(string_of_expression expr1) (string_of_expression expr2))
 								 end
 	| EXPRLower(expr1)
-	| EXPRUpper(expr1) -> (match domain_of_expression r att_env expr1 with | DVChar -> DVChar | _ -> failwith "")
+	| EXPRUpper(expr1) -> begin
+						  match domain_of_expression r att_env expr1 with
+						  | DVChar -> DVChar 
+						  | _ -> failwith (Printf.sprintf "Error: incompatible operation, %s is not a VARCHAR"
+						                   (string_of_expression expr1))
+						  end
 	| EXPRSubString(expr1, expr2, expr3) -> begin 
 											match (domain_of_expression r att_env expr1,
 											       domain_of_expression r att_env expr2,
 											       domain_of_expression r att_env expr3) with
 											| (DVChar, DInt, DInt) -> DVChar
-											| _ -> failwith ""
+											| _ -> failwith (Printf.sprintf "Error: cannot apply substring with arguments %s, %s, %s"
+															(string_of_expression expr1) (string_of_expression expr2) (string_of_expression expr3))
 											end
 	| EXPRDate(_) -> DDate
 	| EXPRExtract(_, _) -> DInt 
@@ -648,7 +652,7 @@ and eval_expression att_env expr =
 								   begin
 								   match Env.find attr att_env with
 									| Some(att) -> (fun t -> R.attribute att t)
-									| None -> failwith (Printf.sprintf "Error: unknown attribute ici: %s" attr)   
+									| None -> failwith (Printf.sprintf "Error: unknown attribute: %s" attr)   
 								   end
 	| EXPRPar(expr1) -> eval_expression att_env expr1
 	| EXPRInt(i) -> (fun t -> Some(VInt(i)))
@@ -780,16 +784,8 @@ and eval_source r_env source =
 			 					 	  next (["", sattr] @ att_l) cond
 			| _ -> failwith (Printf.sprintf "Error: inalide attribute for natural join")
 	in
-	
 	let eval_proj_for_natural r att_env =
-	(*	
-	    let rec display env = 
-	    match env with
-	    | [] -> ()
-	    | (s, att) :: next -> Printf.printf "%s " s; display next
-	    in
-		let _ =  display att_env in
-	*)	let rec contains l v = 
+		let rec contains l v = 
 		  match l with
 		  | [] -> false
 		  | h :: q -> if h = v then true else contains q v
